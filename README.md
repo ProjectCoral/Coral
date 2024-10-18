@@ -1,10 +1,8 @@
 <div align="center">
-    <div style="width: 160px; height: 160px; border-radius: 50%; overflow: hidden;">
-        <img width="160" src="https://avatars.githubusercontent.com/u/185302736" alt="logo" style="width: 100%; height: auto;">
+    <div>
+        <img src="./docs/coral.png" alt="logo" style="width: 20%; height: auto;">
     </div>
-    </br>
-    <h1>Project Coral</h1>
-
+<h1>Project Coral</h1>
 
 新一代（或许）python QQ 机器人库
 
@@ -12,7 +10,7 @@
 
 图标由画师<a href = "https://www.pixiv.net/users/20728711">WERI</a>绘制
 
-![](https://shields.io/github/stars/ProjectCoral/Coral.svg)![](https://img.shields.io/github/forks/ProjectCoral/Coral.svg) ![](https://img.shields.io/github/tag/ProjectCoral/Coral.svg) ![](https://img.shields.io/github/release/ProjectCoral/Coral.svg) ![](https://img.shields.io/github/issues/ProjectCoral/Coral.svg)
+![](https://shields.io/github/stars/ProjectCoral/Coral.svg)![](https://img.shields.io/github/forks/ProjectCoral/Coral.svg) ![](https://img.shields.io/github/tag/ProjectCoral/Coral.svg) ![](https://img.shields.io/github/release/ProjectCoral/Coral.svg) ![](https://img.shields.io/github/issues/ProjectCoral/Coral.svg)![](https://img.shields.io/badge/Python-3.10-blue)
 
 </div>
 
