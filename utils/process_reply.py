@@ -33,7 +33,18 @@ class ProcessReply:
             self.process_audio = None
         else:
             self.process_audio = self.register.execute_function('process_audio')
-        
+        if 'search_memory' not in self.register.functions:
+            logging.warning('search_memory function is not registered, search memory will not be working.')
+            self.search_memory = None
+        else:
+            self.search_memory = self.register.execute_function('search_memory')
+        if 'store_memory' not in self.register.functions:
+            logging.warning('add_memory function is not registered, add memory will not be working.')
+            self.store_memory = None
+        else:
+            self.store_memory = self.register.execute_function('store_memory')
+
+
     async def process_message(self, message):
         """
         处理格式化消息。
@@ -62,13 +73,21 @@ class ProcessReply:
         if is_image and self.process_image:
             send_message = await self.process_image({"image_url": image_url, "sender_user_id": sender_user_id, "group_id": group_id})
         elif self.process_text:
-            if 'process_message' in self.register.event_queues:
-                processed_message, sender_user_id, group_id = await self.register.execute_event('process_message', {"message": processed_message, "sender_user_id": sender_user_id, "group_id": group_id})
-            send_message = await self.process_text({"message": processed_message, "sender_user_id": sender_user_id, "group_id": group_id})
+            if self.store_memory is not None:
+                memory = self.search_memory({"sender_user_id": sender_user_id, "group_id": group_id})
+            send_message = await self.process_text({"message": processed_message, "memory": memory, "sender_user_id": sender_user_id, "group_id": group_id})
         else:
             logging.warning('No process function is registered, message will not be processed.')
             return None
+        await self.finish_reply(processed_message,send_message)
         return send_message
+
+    async def finish_reply(self, message, send_message):
+        reply = send_message['message']
+        sender_user_id = send_message['sender_user_id']
+        group_id = send_message['group_id']
+        if self.store_memory is not None:
+            self.store_memory({"message": message,"reply": reply,"sender_user_id": sender_user_id, "group_id": group_id})
 
     def is_image_message(self, message: str) -> tuple[bool, str]:
         """

@@ -39,4 +39,4 @@ class PluginManager:
         logging.info(f"Loaded {len(self.plugins)} plugins")
 
     def show_plugins(self, *args):
-        return  "Available plugins:" + "\n".join(self.plugins) + "\n Running Plugin Manager version "+ PluginManager_Version
+        return  "Available plugins:\n" + str(self.plugins) + "\n Running Plugin Manager version "+ PluginManager_Version

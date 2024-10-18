@@ -60,8 +60,12 @@ class ReverseWS:
                     result = await self.process_reply(formatted_data)
                     if result is None:
                         continue
-
-                    reply_item, sender_user_id, group_id = result
+                    
+                    if 'finish_reply' in self.register.event_queues:
+                        await self.register.execute_event('finish_reply', result)
+                    reply_item = result['message']
+                    sender_user_id = result['sender_user_id']
+                    group_id = result['group_id']
 
                     logging.info(f"回复{reply_item}")
                     reply_json = await build_reply_json(reply_item, sender_user_id, group_id)

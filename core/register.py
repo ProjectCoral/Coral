@@ -6,7 +6,7 @@ class Register:
         self.commands = {}
         self.command_descriptions = {}
         self.functions = {}
-        self.default_events = ["client_connected", "client_disconnected", "prepare_reply", "process_reply", "search_memory", "store_memory"]
+        self.default_events = ["client_connected", "client_disconnected", "prepare_reply", "finish_reply"]
 
     def register_event(self, listener_queue, event_name, function, priority=1):
         self.event_queues[listener_queue].append((event_name, function, priority))

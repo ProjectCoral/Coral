@@ -1,4 +1,5 @@
 import os
+import logging
 
 def register_event(register, config):
     # register event handler for the test plugin
@@ -13,8 +14,8 @@ class TestEventHandler:
         self.config = config
 
     async def handle_event(self):
-        print("Client connected , Test event handler called")
+        logging.info("Client connected , Test event handler called")
         # do something here
         plugins = self.register.execute_command('plugins')
-        print(plugins)
+        logging.info(f"{plugins}")
         return 0, False, 1

@@ -14,7 +14,7 @@ from utils.process_reply import ProcessReply
 from core.register import Register
 from core.plugin_manager import PluginManager
 
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s - %(levelname)s] %(message)s')
+logging.basicConfig(level=logging.INFO, format="[%(asctime)s-%(name)s] [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
 
 class Coral:
     def __init__(self):
