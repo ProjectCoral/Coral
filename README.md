@@ -40,7 +40,7 @@
 
 ### 注意事项：
 
-- AGPL-3.0 协议属于传染性协议，因此建议直接/间接接触 `Coral` 项目的软件使用 `AGPL-3.0` 开源
+- `AGPL-3.0` 协议属于传染性协议，因此建议直接/间接接触 Coral 项目的软件使用 `AGPL-3.0` 开源
 
 - 本项目不建议用于商业用途。
 
@@ -74,7 +74,9 @@
 
 > 前身 [Muice-Chatbot](https://github.com/Moemu/Muice-Chatbot)
 
-> Onebot11 协议: [OneBot](https://github.com/howmanybots/onebot)
+> Onebot11 协议 [OneBot](https://github.com/howmanybots/onebot)
+
+> 文档参考 [mirai](https://github.com/mamoe/mirai)
 
 ### 总代码贡献：
 
