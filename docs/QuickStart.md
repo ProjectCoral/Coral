@@ -34,7 +34,7 @@ pip install -r requirements.txt
 启动项目：
 
 ```powershell
-python Coral.py
+python main.py
 ```
 
 至此，Coral 项目已经成功安装，接下来需要接入平台。

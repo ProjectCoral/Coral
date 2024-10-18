@@ -6,6 +6,8 @@ import logging
 from fastapi import FastAPI, WebSocket
 from starlette.websockets import WebSocketDisconnect
 
+logger = logging.getLogger(__name__)
+
 async def build_reply_json(reply_item, sender_user_id, group_id):
     if reply_item is None:
         return None
@@ -43,7 +45,7 @@ class ReverseWS:
         @self.app.websocket("/ws/api")
         async def websocket_endpoint(websocket: WebSocket):
             await websocket.accept()
-            logging.info("WebSocket connected")
+            logger.info("WebSocket connected")
             if 'client_connected' in self.register.event_queues:
                 await self.register.execute_event('client_connected')
             try:
@@ -67,14 +69,14 @@ class ReverseWS:
                     sender_user_id = result['sender_user_id']
                     group_id = result['group_id']
 
-                    logging.info(f"回复{reply_item}")
+                    logger.info(f"回复{reply_item}")
                     reply_json = await build_reply_json(reply_item, sender_user_id, group_id)
                     await websocket.send_text(reply_json)
 
             except json.JSONDecodeError:
-                logging.error("JSONDecodeError")
+                logger.error("JSONDecodeError")
             except WebSocketDisconnect:
-                logging.info("WebSocket disconnected")
+                logger.info("WebSocket disconnected")
                 if 'client_disconnected' in self.register.event_queues:
                     await self.register.execute_event('client_disconnected')
             except Exception as e:
@@ -86,7 +88,7 @@ class ReverseWS:
             if 'post_type' in data and data['post_type'] == 'meta_event':
                 if data['meta_event_type'] == 'lifecycle':
                     if data['sub_type'] == 'connect':
-                        logging.info(f"已链接")
+                        logger.info(f"已链接")
                         return None
                 elif data['meta_event_type'] == 'heartbeat':
                     return None
@@ -96,17 +98,17 @@ class ReverseWS:
                 raw_message = data['raw_message']
                 if data['message_type'] == 'private':
                     group_id = -1
-                    logging.info(f"私聊消息：{raw_message}，来自{sender_user_id}")
+                    logger.info(f"私聊消息：{raw_message}，来自{sender_user_id}")
                 elif data['message_type'] == 'group':
                     group_id = data.get('group_id')
-                    logging.info(f"群聊消息：{raw_message}，来自{sender_user_id}，群号{group_id}")
+                    logger.info(f"群聊消息：{raw_message}，来自{sender_user_id}，群号{group_id}")
                 else:
-                    logging.warning(f"未知消息类型：{data['message_type']}")
+                    logger.warning(f"未知消息类型：{data['message_type']}")
                     return None
                 return {"raw_message": raw_message,"sender_user_id": sender_user_id, "group_id": group_id}
             
             else:
-                logging.warning(f"未知数据类型：{data}")
+                logger.warning(f"未知数据类型：{data}")
                 return None
         except Exception as e:
             raise e

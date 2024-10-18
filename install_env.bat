@@ -13,7 +13,7 @@ set enable_venv=1
 set max_connection=16
 set min_split_size=1M
 
-set pip_extra_install_packages=llmtuner
+set pip_extra_install_packages=
 :::::::::::::::::
 
 cd /d %~dp0
@@ -60,18 +60,6 @@ if errorlevel 1 (
     echo %GN%[INFO]%WT% CUDA已安装，将安装PyTorch-cuda版本。
     set cuda_installed=1
 )
-set /p enable_ofa="是否安装OFA依赖？[Y/N]:"
-if /i "%enable_ofa%"=="y" (
-    set enable_ofa=1
-) else (
-    set enable_ofa=0
-)
-set /p enable_audio="是否安装音频处理依赖？[Y/N]:"
-if /i "%enable_audio%"=="y" (
-    set enable_audio=1
-) else (
-    set enable_audio=0
-)
 echo %GN%[INFO]%WT% 请检查列出的配置是否正确，如有错误请修改install_env.bat中的config。
 echo.
 echo     是否启用python venv = %enable_venv%
@@ -79,8 +67,6 @@ echo     aria2c最大连接数 = %max_connection%
 echo     aria2c最小分片大小 = %min_split_size%
 echo     pip源 = %pip_source%
 echo     git源 = %git_source%
-echo     是否安装OFA依赖 = %enable_ofa%
-echo     是否安装音频处理依赖 = %enable_audio%
 echo %BL%    pip额外安装包 = %pip_extra_install_packages%
 if %python_installed%==0 (
     echo %RD%    未找到python，将尝试安装。
@@ -180,22 +166,6 @@ goto :eof
 pip install -r requirements.txt -i %pip_source%
 if errorlevel 1 (
     echo %RD%[ERROR]%WT% 安装依赖失败。
-    echo %WT%按任意键退出。
-    pause>nul
-    exit
-    )
-if %enable_ofa%==0 goto :eof
-pip install -r ofa_requirements.txt -i %pip_source%
-if errorlevel 1 (
-    echo %RD%[ERROR]%WT% 安装ofa依赖失败。
-    echo %WT%按任意键退出。
-    pause>nul
-    exit
-    )
-if %enable_audio%==0 goto :eof
-pip install -r audio_requirements.txt -i %pip_source%
-if errorlevel 1 (
-    echo %RD%[ERROR]%WT% 安装音频处理依赖失败。
     echo %WT%按任意键退出。
     pause>nul
     exit

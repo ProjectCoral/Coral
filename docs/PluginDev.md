@@ -73,7 +73,7 @@ plugin-name
     **注意**: 命令名称必须唯一，否则会覆盖已注册的命令。
 
     ```python
-    def register_command(register):
+    def register_command(register, config):
         register.register_command("sayhello", "Say hello to someone", sayhello)
 
         register.register_command("howmanycommands", "How many commands are registered", TestCommand(register, config).howmanycommands)
@@ -91,7 +91,7 @@ plugin-name
 
 1. 编写事件逻辑：
 
-    在 `main.py` 中，定义一个函数/类，该函数会在用户触发事件时被调用。
+    在 `main.py` 中，定义一个**异步**函数/类，该**异步**函数会在用户触发事件时被调用。
 
     在返回数据时，你需要包含：
     - 处理后的信息(打包成字典)
@@ -102,7 +102,7 @@ plugin-name
     
     示例函数：
     ```python
-    def on_message(self, message):
+    async def on_message(self, message):
         logging.info(f"Received message: {message['raw_message']}")
         return message, False, 1
     ```
@@ -119,10 +119,10 @@ plugin-name
             self.register = register
             self.config = config
 
-        def on_message(self, message):
+        async def on_message(self, message):
             logging.info(f"Received message: {message['raw_message']}")
         
-        def connected(self):
+        async def connected(self):
             logging.info("Client connected")
             return 0, False, 1
     ```
@@ -141,7 +141,7 @@ plugin-name
     **注意**: 事件名称可以不唯一，但我还是不推荐这么做，因为可能会导致事件的执行顺序混乱。
 
     ```python
-    def register_event(register):
+    def register_event(register, config):
         register.register_event("prepare_reply", "Receivemessage", on_message, 1)
 
         register.register_event("prepare_reply", "Receivemessage",TestEvent(register, config).on_message, 1)
@@ -155,7 +155,7 @@ plugin-name
 
 1. 编写函数逻辑：
 
-    在 `main.py` 中，定义一个函数/类，该函数会在代码调用特定的函数时被调用。
+    在 `main.py` 中，定义一个**异步**函数/类，该**异步**函数会在代码调用特定的函数时被调用。
 
     编写函数时，如果有互通的需求，我推荐使用类，这样可以传递 Coral 的 `register` 和 `config` 类，可以调用其他行为\获取全局配置。
 
@@ -163,7 +163,7 @@ plugin-name
 
     示例函数：
     ```python
-    def on_function_call(self, func_name, args):
+    async def on_function_call(self, func_name, args):
         logging.info(f"Function {func_name} called with args: {args}")
         return None
     ```
@@ -178,7 +178,7 @@ plugin-name
             self.register = register
             self.config = config
 
-        def on_function_call(self, func_name, args):
+        async def on_function_call(self, func_name, args):
             logging.info(f"Function {func_name} called with args: {args}")
             return None
     ```
@@ -188,7 +188,7 @@ plugin-name
     在 `main.py` 中，调用 `register_function` 函数，并传入函数名称、函数执行函数。
 
     ```python
-    def register_function(register):
+    def register_function(register, config):
         register.register_function("on_function_call", on_function_call)
 
         register.register_function("on_function_call", TestFunction(register, config).on_function_call)

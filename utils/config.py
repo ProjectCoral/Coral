@@ -2,6 +2,8 @@ import os
 import json
 import logging
 
+logger = logging.getLogger(__name__)
+
 main_config_template = {
     "websocket_port": 21050,
     "bot_qq_id": 123456789,
@@ -18,7 +20,7 @@ class Config:
 
     def load_config(self, config):
         if not os.path.exists(config):
-            logging.warning("Config file not found, using default config.")
+            logger.warning("Config file not found, using default config.")
             self.config = main_config_template
         else:
             with open(config, "r") as f:

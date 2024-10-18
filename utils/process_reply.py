@@ -4,6 +4,8 @@ import re
 import random
 import logging
 
+logger = logging.getLogger(__name__)
+
 class ProcessReply:
     register = None
     config = None
@@ -14,32 +16,32 @@ class ProcessReply:
 
     def define_functions(self):
         if 'process_text' not in self.register.functions:
-            logging.warning('process_text function is not registered, process text will not be working.')
+            logger.warning('process_text function is not registered, process text will not be working.')
             self.process_text = None
         else:
             self.process_text = self.register.execute_function('process_text')
         if 'process_image' not in self.register.functions:
-            logging.warning('process_image function is not registered, process image will not be working.')
+            logger.warning('process_image function is not registered, process image will not be working.')
             self.process_image = None
         else:
             self.process_image = self.register.execute_function('process_image')
         if 'process_video' not in self.register.functions:
-            logging.warning('process_video function is not registered, process video will not be working.')
+            logger.warning('process_video function is not registered, process video will not be working.')
             self.process_video = None
         else:
             self.process_video = self.register.execute_function('process_video')
         if 'process_audio' not in self.register.functions:
-            logging.warning('process_audio function is not registered, process audio will not be working.')
+            logger.warning('process_audio function is not registered, process audio will not be working.')
             self.process_audio = None
         else:
             self.process_audio = self.register.execute_function('process_audio')
         if 'search_memory' not in self.register.functions:
-            logging.warning('search_memory function is not registered, search memory will not be working.')
+            logger.warning('search_memory function is not registered, search memory will not be working.')
             self.search_memory = None
         else:
             self.search_memory = self.register.execute_function('search_memory')
         if 'store_memory' not in self.register.functions:
-            logging.warning('add_memory function is not registered, add memory will not be working.')
+            logger.warning('store_memory function is not registered, add memory will not be working.')
             self.store_memory = None
         else:
             self.store_memory = self.register.execute_function('store_memory')
@@ -56,18 +58,18 @@ class ProcessReply:
         is_at_message, at_matches, processed_message = self.process_at_message(raw_message)
         if is_at_message:
             if self.config.get('bot_qq_id') not in at_matches:
-                logging.info(f'Received at message from {sender_user_id} in group {group_id}, but it is not for me.')
+                logger.info(f'Received at message from {sender_user_id} in group {group_id}, but it is not for me.')
                 return None
         else:
             if self.config.get('at_reply', False):
-                logging.info(f'Received message from {sender_user_id} in group {group_id}, but it is not an at message.')
+                logger.info(f'Received message from {sender_user_id} in group {group_id}, but it is not an at message.')
                 return None
             
         is_image, image_url = self.is_image_message(processed_message)
 
         if not is_at_message and not self.config.get('at_reply', False) and not group_id == -1:
             if random.randint(1, 100) >= self.config.get('reply_rate', 100):
-                logging.info(f'Received message from {sender_user_id} in group {group_id}, but it is not an at message and reply rate is too low.')
+                logger.info(f'Received message from {sender_user_id} in group {group_id}, but it is not an at message and reply rate is too low.')
                 return None
             
         if is_image and self.process_image:
@@ -77,7 +79,7 @@ class ProcessReply:
                 memory = self.search_memory({"sender_user_id": sender_user_id, "group_id": group_id})
             send_message = await self.process_text({"message": processed_message, "memory": memory, "sender_user_id": sender_user_id, "group_id": group_id})
         else:
-            logging.warning('No process function is registered, message will not be processed.')
+            logger.warning('No process function is registered, message will not be processed.')
             return None
         await self.finish_reply(processed_message,send_message)
         return send_message
