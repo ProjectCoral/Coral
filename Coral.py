@@ -25,14 +25,14 @@ class Coral:
         config_file = "./config.json"
         self.config = Config(config_file)
         self.register = Register()
-        self.plugin_manager = PluginManager(plugin_dir, self.register)
+        self.plugin_manager = PluginManager(self.register, self.config)
 
         self.plugin_manager.plugins.append("base_commands")
         base_commands(self.register).register_command()
         self.plugin_manager.load_plugins()
 
         self.process_reply = ProcessReply(self.register, self.config)
-        threading.Thread(target=self.ws_thread, args=(self.config,self.process_reply.process_message),).start()
+        threading.Thread(target=self.ws_thread, args=(self.config,self.register,self.process_reply.process_message),).start()
         
         AutoPrompt.load_commands(self.register.commands)
 
@@ -44,10 +44,10 @@ class Coral:
         except KeyboardInterrupt:
             os._exit(0)
 
-    def ws_thread(self, config, process_reply):
+    def ws_thread(self, config, register, process_reply):
         logging.info("Starting WebSocket Server...")
         try:
-            ReverseWS(config, process_reply).start()
+            ReverseWS(config, register, process_reply).start()
         except KeyboardInterrupt:
             pass
 

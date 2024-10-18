@@ -5,11 +5,12 @@ import logging
 PluginManager_Version = "1.0"
 
 class PluginManager:
-    plugin_dir: str = "./plugins"
     register = None
+    config = None
 
-    def __init__(self, plugin_dir, register):
-        self.plugin_dir = plugin_dir
+    def __init__(self, register, config):
+        self.config = config
+        self.plugin_dir = self.config.get("plugin_dir", "./plugins")
         self.register = register
         self.plugins = []
 
@@ -29,11 +30,11 @@ class PluginManager:
                 spec.loader.exec_module(module)
                 self.plugins.append(plugin_name)
                 if hasattr(module, 'register_command'):
-                    module.register_command(self.register)
+                    module.register_command(self.register, self.config)
                 if hasattr(module, 'register_event'):
-                    module.register_event(self.register)
+                    module.register_event(self.register, self.config)
                 if hasattr(module, 'register_function'):
-                    module.register_function(self.register)
+                    module.register_function(self.register, self.config)
         self.register.register_command("plugins", "List all available plugins", self.show_plugins)
         logging.info(f"Loaded {len(self.plugins)} plugins")
 

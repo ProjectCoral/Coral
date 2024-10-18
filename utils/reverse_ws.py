@@ -33,9 +33,10 @@ class ReverseWS:
     config = None
     processing_reply = None
 
-    def __init__(self, config, process_reply):
+    def __init__(self, config, register, process_reply):
         self.app = FastAPI()
         self.config = config
+        self.register = register
         self.websocket_port = self.config.get("websocket_port", 21050)
         self.process_reply = process_reply
 
@@ -43,6 +44,8 @@ class ReverseWS:
         async def websocket_endpoint(websocket: WebSocket):
             await websocket.accept()
             logging.info("WebSocket connected")
+            if 'client_connected' in self.register.event_queues:
+                await self.register.execute_event('client_connected')
             try:
                 while True:
                     data = await websocket.receive_text()
@@ -50,6 +53,9 @@ class ReverseWS:
                     formatted_data = self.process_data(data)
                     if formatted_data is None:
                         continue
+
+                    if 'prepare_reply' in self.register.event_queues:
+                        await self.register.execute_event('prepare_reply', formatted_data)
 
                     result = await self.process_reply(formatted_data)
                     if result is None:
@@ -65,6 +71,8 @@ class ReverseWS:
                 logging.error("JSONDecodeError")
             except WebSocketDisconnect:
                 logging.info("WebSocket disconnected")
+                if 'client_disconnected' in self.register.event_queues:
+                    await self.register.execute_event('client_disconnected')
             except Exception as e:
                 raise e
 

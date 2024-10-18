@@ -6,6 +6,7 @@ class Register:
         self.commands = {}
         self.command_descriptions = {}
         self.functions = {}
+        self.default_events = ["client_connected", "client_disconnected", "prepare_reply", "process_reply", "search_memory", "store_memory"]
 
     def register_event(self, listener_queue, event_name, function, priority=1):
         self.event_queues[listener_queue].append((event_name, function, priority))
@@ -57,7 +58,7 @@ class Register:
         if event not in self.event_queues:
             raise ValueError(f"Event {event} not found, probably you forget register it")
         for event_name, func, priority in self.event_queues[event]:
-            result = await func(event, *args)
+            result = await func(*args)
             if result is not None:
                 args = result[0]
                 if isinstance(result, tuple) and len(result) == 3:
