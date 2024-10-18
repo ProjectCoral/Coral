@@ -45,14 +45,7 @@ Coral 项目支持多种接入方式，只需注册函数并调用即可做到�
 
 对于 企鹅 平台， Coral 项目目前原生支持反向websocket `Reverse_websocket` 接入。你需要下载可用的 Onebot11 适配器（如[LLOnebot](https://github.com/LLOneBot/LLOneBot)、[Lagrange.Core](https://github.com/LagrangeDev/Lagrange.Core)），配置 `config.json` 文件中的 `websocket_port` 即可。
 
-# 配置
 
-配置文件生成在 `config.json` 中，可以自行修改。
+---
 
-# 插件、
-
-Coral 项目支持插件机制，可以方便地扩展功能。
-
-插件目录为 `plugins`。
-
-关于编写插件，请参考[插件开发文档](https://github.com/ProjectCoral/Coral/blob/master/docs/PluginDev.md)。
+至此，Coral 项目已经可以正常运行，你可以通过添加插件来扩展功能。详情请参阅[用户手册](UserManual.md)。
