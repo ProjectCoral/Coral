@@ -1,0 +1,7 @@
+fastapi
+requests
+uvicorn
+apscheduler
+sentencepiece
+pyfiglet
+colorama
