@@ -65,7 +65,7 @@
 ## 开发相关
 
 - 开发文档: [DevManual](docs/DevManual.md)
-- 参与贡献: [Contributing](CONTRIBUTING.md)
+- 参与贡献: [Contributing](docs/CONTRIBUTING.md)
 - 版本发布: [Release](https://github.com/ProjectCoral/Coral/releases)
 
 - `Coral` 开发组和官方系列项目: [Official](https://github.com/ProjectCoral)
@@ -86,4 +86,4 @@
 
 Star History：
 
-[![Star History Chart](https://api.star-history.com/svg?repo=ProjectCoral/Coral&type=Date)](https://star-history.com/#ProjectCoral/Coral&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=ProjectCoral/Coral&type=Date)](https://star-history.com/#ProjectCoral/Coral&Date)
