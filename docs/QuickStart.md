@@ -37,7 +37,13 @@ pip install -r requirements.txt
 python Coral.py
 ```
 
-至此，Coral 项目已经成功安装。
+至此，Coral 项目已经成功安装，接下来需要接入平台。
+
+# 接入
+
+Coral 项目支持多种接入方式，只需注册函数并调用即可做到在任意平台使用。
+
+对于 企鹅 平台， Coral 项目目前原生支持反向websocket `Reverse_websocket` 接入。你需要下载可用的 Onebot11 适配器（如[LLOnebot](https://github.com/LLOneBot/LLOneBot)、[Lagrange.Core](https://github.com/LagrangeDev/Lagrange.Core)），配置 `config.json` 文件中的 `websocket_port` 即可。
 
 # 配置
 
@@ -48,3 +54,5 @@ python Coral.py
 Coral 项目支持插件机制，可以方便地扩展功能。
 
 插件目录为 `plugins`。
+
+关于编写插件，请参考[插件开发文档](https://github.com/ProjectCoral/Coral/blob/master/docs/PluginDev.md)。

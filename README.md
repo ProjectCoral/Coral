@@ -46,9 +46,9 @@
 
 ### 衍生软件需声明引用
 
-- 若引用 `Coral` 发布的软件包而不修改 `Coral` 源码，请在软件包的 `README` 中声明 `Coral` 项目的链接。
+- 若引用 Coral 发布的软件包而不修改 Coral 源码，请在软件包的 `README` 中声明 Coral 项目的链接。
 
-- 若修改 `Coral` 源代码再发布，**或参考 `Coral` 内部实现发布另一个项目**，则衍生项目必须在**文章首部**或 `Coral` 相关内容**首次出现**的位置**明确声明**来源于[本仓库](https://github.com/ProjectCoral/Coral)。不得扭曲或隐藏免费且开源的事实。
+- 若修改 Coral 源代码再发布，**或参考 Coral 内部实现发布另一个项目**，则衍生项目必须在**文章首部**或 Coral 相关内容**首次出现**的位置**明确声明**来源于[本仓库](https://github.com/ProjectCoral/Coral)。不得扭曲或隐藏免费且开源的事实。
 
 ## 功能
 
@@ -58,7 +58,7 @@
 
 ## 快速使用
 
-> 如果你希望快速部署一个 `Coral` 机器人，安装插件、并投入使用，请看这里：[快速部署](docs/QuickStart.md)
+> 如果你希望快速部署一个 Coral 机器人，安装插件、并投入使用，请看这里：[快速部署](docs/QuickStart.md)
 - **用户手册**: [UserManual](docs/UserManual.md)
 - **插件开发**: [PluginDev](docs/PluginDev.md)
 
@@ -68,7 +68,7 @@
 - 参与贡献: [Contributing](docs/CONTRIBUTING.md)
 - 版本发布: [Release](https://github.com/ProjectCoral/Coral/releases)
 
-- `Coral` 开发组和官方系列项目: [Official](https://github.com/ProjectCoral)
+- Coral 开发组和官方系列项目: [Official](https://github.com/ProjectCoral)
 
 ## 鸣谢
 
@@ -82,7 +82,7 @@
     <img src="https://contrib.rocks/image?repo=ProjectCoral/Coral" />
 </a>
 
-### 感谢所有为 `Coral` 项目做出贡献的人！
+### 感谢所有为 Coral 项目做出贡献的人！
 
 Star History：
 
