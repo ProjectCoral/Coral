@@ -8,7 +8,7 @@
 
 本篇将介绍如何开发一个插件，以实现一个简单的功能为例。
 
-你也可以参考 [plugins](https://github.com/project-coral/coral/tree/master/coral/plugins) 中的插件示例，了解插件开发的基本流程。
+你也可以参考 [plugins](https://github.com/ProjectCoral/Coral/blob/main/plugins) 中的插件示例，了解插件开发的基本流程。
 
 ## 规范
 
