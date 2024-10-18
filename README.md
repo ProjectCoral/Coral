@@ -86,4 +86,4 @@
 
 Star History：
 
-[![Star History Chart](https://api.star-history.com/svg?repo=ProjectCoral/Coral&type=Date)](https://star-history.com/#ProjectCoral/Coral&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=ProjectCoral/Coral&type=Date)](https://star-history.com/#ProjectCoral/Coral&Date)
