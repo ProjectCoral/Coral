@@ -74,7 +74,9 @@
 
 > 前身 [Muice-Chatbot](https://github.com/Moemu/Muice-Chatbot)
 
-> Onebot11 协议: [OneBot](https://github.com/howmanybots/onebot)
+> Onebot11 协议 [OneBot](https://github.com/howmanybots/onebot)
+
+> 文档参考 [mirai](https://github.com/mamoe/mirai)
 
 ### 总代码贡献：
 
