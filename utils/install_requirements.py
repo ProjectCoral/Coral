@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 import logging
+from colorama import Fore
 
 logger = logging.getLogger(__name__)
 
@@ -17,19 +18,19 @@ class InstallRequirements:
         
     async def install_pip_requirements(self, requirements_file):
         if not os.path.exists(requirements_file):
-            logger.error("Requirements file not found: {}".format(requirements_file))
+            logger.error(Fore.RED + "Requirements file not found: {}".format(requirements_file) + Fore.RESET)
             return False
         index_url = self.config.get('index_url', 'https://pypi.tuna.tsinghua.edu.cn/simple')
         try:
             subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-i', index_url, '-r', requirements_file], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError as e:
-            logger.error("Failed to install requirements: {}".format(e))
+            logger.error(Fore.RED + "Failed to install requirements: {}".format(e) + Fore.RESET)
             return False
         return True
     
     async def check_pip_requirements(self, requirements_file):
         if not os.path.exists(requirements_file):
-            logger.error("Requirements file not found: {}".format(requirements_file))
+            logger.error(Fore.RED + "Requirements file not found: {}".format(requirements_file) + Fore.RESET)
             return False
         with open(requirements_file, 'r') as f:
             lines = f.readlines()
@@ -39,6 +40,6 @@ class InstallRequirements:
             try:
                 subprocess.check_call([sys.executable, '-m', 'pip', 'show', line.strip()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except subprocess.CalledProcessError as e:
-                logger.error("Failed to check requirement: {}".format(line.strip()))
+                logger.error(Fore.RED + "Failed to check requirement: {}".format(line.strip()) + Fore.RESET)
                 return False
         return True
