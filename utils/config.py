@@ -21,7 +21,7 @@ class Config:
 
     def load_config(self, config):
         if not os.path.exists(config):
-            logger.warning(Fore.YELLOW + "Config file not found, using default config." + Fore.RESET)
+            logger.warning(Fore.YELLOW + "Config file not found, creating a default one." + Fore.RESET)
             self.config = main_config_template
         else:
             with open(config, "r") as f:

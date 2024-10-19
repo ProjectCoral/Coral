@@ -6,7 +6,7 @@ from colorama import Fore
 
 logger = logging.getLogger(__name__)
 
-def register_function(register, config):
+def register_function(register, config, perm_system):
     register.register_function('install_pip_requirements', InstallRequirements(config).install_pip_requirements)
     register.register_function('check_pip_requirements', InstallRequirements(config).check_pip_requirements)
 

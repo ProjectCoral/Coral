@@ -16,6 +16,7 @@ from utils.process_reply import ProcessReply
 
 from core.register import Register
 from core.plugin_manager import PluginManager
+from core.perm_system import PermSystem
 
 logger = logging.getLogger(__name__)
 
@@ -31,16 +32,13 @@ class Coral:
         config_file = "./config.json"
         self.config = Config(config_file)
         self.register = Register()
-        self.plugin_manager = PluginManager(self.register, self.config)
+        self.perm_system = PermSystem(self.register, self.config)
+        self.plugin_manager = PluginManager(self.register, self.config, self.perm_system)
 
         self.config.set("coral_version", "241019_early_developement")
 
-        self.plugin_manager.plugins.append("base_commands")
-        utils.commands.register_command(self.register, self.config)
-        self.plugin_manager.plugins.append("install_requirements")
-        utils.install_requirements.register_function(self.register, self.config)
-        self.plugin_manager.plugins.append("chat_command")
-        utils.chat_command.register_event(self.register, self.config)
+        self.register_buildin_plugins()
+
         await self.plugin_manager.load_plugins()
 
         self.process_reply = ProcessReply(self.register, self.config)
@@ -48,12 +46,28 @@ class Coral:
         
         AutoPrompt.load_commands(self.register.commands)
 
+    def register_buildin_plugins(self):
+        self.plugin_manager.plugins.append("base_commands")
+        utils.commands.register_command(self.register, self.config, self.perm_system)
+        self.plugin_manager.plugins.append("install_requirements")
+        utils.install_requirements.register_function(self.register, self.config, self.perm_system)
+        self.plugin_manager.plugins.append("chat_command")
+        utils.chat_command.register_event(self.register, self.config, self.perm_system)
+
     def run(self):
         try:
             while True:
                 im_text = AutoPrompt.prompt()
-                response = self.register.execute_command(im_text)
-                print(response)
+                try:
+                    command, *args = im_text.split(" ", 1)
+                except ValueError:
+                    command = im_text
+                    args = []
+                try:
+                    response = self.register.execute_command(command, "Console", -1, *args)
+                    print(response)
+                except Exception as e:
+                    logger.error(f"Error executing command: {e}")
         except KeyboardInterrupt:
             logger.info("Exiting...")
             os._exit(0)

@@ -39,11 +39,11 @@ class Register:
             return result
         raise ValueError(f"Function {function_name} not found, probably you forget register it")
 
-    def execute_command(self, command_name, data = None):
+    def execute_command(self, command_name, user_id, group_id = -1, data = None):
         if command_name in self.commands:
             if data is None:
-                return self.commands[command_name]()
-            return self.commands[command_name](data)
+                return self.commands[command_name](user_id, group_id)
+            return self.commands[command_name](user_id, group_id, data)
         return self.no_command()
     
     def no_command(self):

@@ -161,4 +161,5 @@ config
 data
 cache
 config.json
+coral.perms
 model

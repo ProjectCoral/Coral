@@ -3,7 +3,7 @@ import logging
 
 logger = logging.getLogger("test_plugin")
 
-def register_event(register, config):
+def register_event(register, config, perm_system):
     # register event handler for the test plugin
     register.register_event('client_connected', 'test_event_handler', TestEventHandler(register, config).handle_event, 1)
 
