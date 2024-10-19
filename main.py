@@ -2,8 +2,10 @@ import os
 import sys
 import subprocess
 import logging
+import shutil
+from colorama import Fore
 
-logging.basicConfig(level=logging.INFO, format="[%(asctime)s-%(name)s] [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
+logging.basicConfig(level=logging.INFO, format="[%(asctime)s] [%(levelname)s:%(name)s] %(message)s", datefmt="%H:%M:%S")
 
 if not os.path.exists('config.json'):
     logging.info("Checking requirements...")
@@ -15,9 +17,17 @@ if not os.path.exists('config.json'):
         try:
             subprocess.check_call([sys.executable, '-m', 'pip', 'show', line.strip()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError as e:
-            logging.error("Failed to check requirement: {}".format(line.strip()))
+            logging.critical(Fore.RED + "Failed to check requirement: {}".format(line.strip()) + Fore.RESET)
             logging.error("Did you install it?")
             sys.exit(1)
+
+logging.info("Cleaning up __pycache__ directories...")
+for root, dirs, files in os.walk('./'):
+    for dir_name in dirs:
+        if dir_name == "__pycache__":
+            pycache_dir = os.path.join(root, dir_name)
+            shutil.rmtree(pycache_dir)
+            logging.debug("Removed {}".format(pycache_dir))
 
 from Coral import Coral
 

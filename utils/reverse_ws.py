@@ -2,6 +2,7 @@ import os
 import json
 import uvicorn
 import logging
+from colorama import Fore
 
 from fastapi import FastAPI, WebSocket
 from starlette.websockets import WebSocketDisconnect
@@ -57,8 +58,13 @@ class ReverseWS:
                         continue
 
                     if 'prepare_reply' in self.register.event_queues:
-                        await self.register.execute_event('prepare_reply', formatted_data)
-
+                        prepared_result = await self.register.execute_event('prepare_reply', formatted_data)
+                        if prepared_result['message'] is not None:
+                            logger.info(f"回复{prepared_result['message']}")
+                            reply_json = await build_reply_json(prepared_result['message'], prepared_result['sender_user_id'], prepared_result['group_id'])
+                            await websocket.send_text(reply_json)
+                            continue
+                            
                     result = await self.process_reply(formatted_data)
                     if result is None:
                         continue
@@ -74,7 +80,7 @@ class ReverseWS:
                     await websocket.send_text(reply_json)
 
             except json.JSONDecodeError:
-                logger.error("JSONDecodeError")
+                logger.error(Fore.RED + "JSONDecodeError" + Fore.RESET)
             except WebSocketDisconnect:
                 logger.info("WebSocket disconnected")
                 if 'client_disconnected' in self.register.event_queues:
@@ -92,7 +98,12 @@ class ReverseWS:
                         return None
                 elif data['meta_event_type'] == 'heartbeat':
                     return None
-                
+            
+            if 'status' in data:
+                if data['status'] != 'ok':
+                    logger.error(f"发送/接收数据错误：{data['status']}")
+                return None
+            
             elif 'post_type' in data and data['post_type'] == 'message':
                 sender_user_id = data.get('sender', {}).get('user_id')
                 raw_message = data['raw_message']

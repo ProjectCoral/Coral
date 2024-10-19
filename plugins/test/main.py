@@ -1,7 +1,7 @@
 import os
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("test_plugin")
 
 def register_event(register, config):
     # register event handler for the test plugin
@@ -21,4 +21,4 @@ class TestEventHandler:
         # do something here
         plugins = self.register.execute_command('plugins')
         logger.info(f"{plugins}")
-        return 0, False, 1
+        return None, False, 1
