@@ -28,6 +28,7 @@ git clone https://github.com/ProjectCoral/Coral.git
 进入项目根目录，安装依赖：
 
 ```powershell
+cd ./Coral
 pip install -r requirements.txt
 ```
 
