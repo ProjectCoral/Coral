@@ -4,7 +4,7 @@
     </div>
 <h1>Project Coral</h1>
 
-新一代（或许）python QQ 机器人库
+新一代（或许）python QQ 机器人框架
 
 这个项目的灵感来源于<a href = "https://github.com/Moemu/Muice-Chatbot">沐雪(Muice-Chatbot)</a>
 
