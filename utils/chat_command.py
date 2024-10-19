@@ -26,11 +26,13 @@ class ChatCommand:
         logger.info(f"Received command: {raw_message}")
         if not self.perm_system.check_perm(["chat_command", "chat_command.execute"], sender_user_id, group_id):
             return {"message": None, "sender_user_id": sender_user_id, "group_id": group_id}, False, 1
-        command = raw_message.split(' ')[0][1:]
-        args = raw_message.split(' ')[1:]
+        parts = raw_message.split(' ', 1)
+        command = parts[0][1:]
+        args = parts[1].strip() if len(parts) > 1 else ""
 
         try:
             send_message = self.register.execute_command(command, sender_user_id, group_id, args)
+            logger.debug(f"Command {command} executed with args {args} and returned {send_message}")
         except Exception as e:
             return {"message": f"Error: {e}", "sender_user_id": sender_user_id, "group_id": group_id}, False, 1
 

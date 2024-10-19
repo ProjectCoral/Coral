@@ -1,19 +1,28 @@
 from collections import defaultdict, deque
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Register:
     def __init__(self):
         self.event_queues = defaultdict(deque)
         self.commands = {}
         self.command_descriptions = {}
+        self.command_permissions = {}
         self.functions = {}
         self.default_events = ["client_connected", "client_disconnected", "prepare_reply", "finish_reply"]
+
+    def hook_perm_system(self, perm_system):
+        self.perm_system = perm_system
 
     def register_event(self, listener_queue, event_name, function, priority=1):
         self.event_queues[listener_queue].append((event_name, function, priority))
 
-    def register_command(self, command_name, description, function):
+    def register_command(self, command_name, description, function, permission=None):
         self.commands[command_name] = function
         self.command_descriptions[command_name] = description
+        if permission is not None:
+            self.command_permissions[command_name] = permission
 
     def register_function(self, function_name, function):
         self.functions[function_name] = function
@@ -28,6 +37,8 @@ class Register:
         if command_name in self.commands:
             del self.commands[command_name]
             del self.command_descriptions[command_name]
+            if command_name in self.command_permissions:
+                del self.command_permissions[command_name]
 
     def unregister_function(self, function_name):
         if function_name in self.functions:
@@ -40,10 +51,14 @@ class Register:
         raise ValueError(f"Function {function_name} not found, probably you forget register it")
 
     def execute_command(self, command_name, user_id, group_id = -1, data = None):
+        if self.perm_system is not None and command_name in self.command_permissions:
+            if not self.perm_system.check_perm(self.command_permissions[command_name], user_id, group_id):
+                return "You don't have permission to execute this command"
         if command_name in self.commands:
             if data is None:
-                return self.commands[command_name](user_id, group_id)
-            return self.commands[command_name](user_id, group_id, data)
+                return self.commands[command_name]()
+            logger.debug(f"Executing command {command_name} with data {data}")
+            return self.commands[command_name](data)
         return self.no_command()
     
     def no_command(self):

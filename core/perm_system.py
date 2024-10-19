@@ -15,35 +15,35 @@ class PermSystem:
         self.register = register
         self.config = config
         self.perm_file = self.config.get('perm_file', './coral.perms')
+
+        self.register.hook_perm_system(self)
+        logger.info("Permission system has been hooked with Register.")
+
         self.load_user_perms()
         self.registered_perms = {}
 
         self.register_perm("ALL", "All Permissions")
         self.register_perm("permission_system", "Base Permission")
-        self.register_perm("permission_system.add_perm", "Add Permission")
-        self.register_perm("permission_system.remove_perm", "Remove Permission")
-        self.register_perm("permission_system.show_perms", "Show Permissions")
-        self.register_perm("permission_system.list_perms", "List Permissions")
 
-        self.register.register_command("perms", "perms <show|list>|<add|remove> <perm_name> <user_id> <group_id> - Manages user permissions.", self.strip_command)
+        self.register.register_command("perms", "perms <show|list>|<add|remove> <perm_name> <user_id> <group_id> - Manages user permissions.", self.strip_command, ["permission_system"])
 
     
-    def strip_command(self, user_id, group_id, *args):
+    def strip_command(self, *args):
         command_args = ' '.join(args)
         if not command_args:
             return "Invalid command format.\nUsage:\n perms <show|list>\n perms <add|remove> <perm_name> <user_id> <group_id>"
         try:
             if command_args.strip() == "show":
-                return self.show_perms(user_id, group_id, "")
+                return self.show_perms()
             elif command_args.strip() == "list":
-                return self.list_perms(user_id, group_id, "")
+                return self.list_perms()
             func, args = command_args.strip().split(" ", 1)
         except ValueError:
             return "Invalid command format."
         if func == "add":
-            return self.add_perm(user_id, group_id, args)
+            return self.add_perm(args)
         elif func == "remove":
-            return self.remove_perm(user_id, group_id, args)
+            return self.remove_perm(args)
         else:
             return f"Invalid command {args}."
 
@@ -59,9 +59,7 @@ class PermSystem:
         with open(self.perm_file, 'wb') as f:
             pickle.dump(self.user_perms, f)
 
-    def add_perm(self, user_id, group_id, command):
-        if not self.check_perm(["permission_system", "permission_system.add_perm"], user_id, group_id):
-            return "You do not have permission."
+    def add_perm(self, command):
         try:
             perm_name, user_id, group_id = command.split(" ", 2)
         except ValueError:
@@ -75,9 +73,7 @@ class PermSystem:
         self.save_user_perms()
         return "Permission added."
     
-    def remove_perm(self, user_id, group_id, command):
-        if not self.check_perm(["permission_system", "permission_system.remove_perm"], user_id, group_id):
-            return "You do not have permission."
+    def remove_perm(self, command):
         try:
             perm_name, user_id, group_id = command.split(" ", 2)
         except ValueError:
@@ -128,10 +124,7 @@ class PermSystem:
     def register_perm(self, perm_name, perm_desc):
         self.registered_perms[perm_name] = perm_desc
 
-    def show_perms(self, user_id, group_id, *args):
-        if not self.check_perm(["permission_system", "permission_system.show_perms"], user_id, group_id):
-            logger.error(Fore.RED + f"User {user_id} does not have permission to show permissions." + Fore.RESET)
-            return False
+    def show_perms(self, *args):
         message = "Total registered " + str(len(self.registered_perms)) + " Permissions.\n"
         message += "Available Permissions:\n"
         for perm_name, perm_desc in self.registered_perms.items():
@@ -139,10 +132,7 @@ class PermSystem:
         message += "\nFor more information about user permissions, use the 'perms list' command.\n"
         return message
 
-    def list_perms(self, user_id, group_id, *args):
-        if not self.check_perm(["permission_system", "permission_system.show_perms"], user_id, group_id):
-            logger.error(Fore.RED + f"User {user_id} does not have permission to show permissions." + Fore.RESET)
-            return False
+    def list_perms(self, *args):
         message = "User Permissions:\n"
         for user, perms in self.user_perms.items():
             message += f"User {user}:\n"

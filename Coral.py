@@ -42,6 +42,8 @@ class Coral:
         await self.plugin_manager.load_plugins()
 
         self.process_reply = ProcessReply(self.register, self.config)
+
+        logger.info("All things works fine, starting client...")
         threading.Thread(target=self.ws_thread, args=(self.config,self.register,self.process_reply.process_message),).start()
         
         AutoPrompt.load_commands(self.register.commands)
@@ -55,6 +57,7 @@ class Coral:
         utils.chat_command.register_event(self.register, self.config, self.perm_system)
 
     def run(self):
+        time.sleep(3) # 等待适配器加载完成
         try:
             while True:
                 im_text = AutoPrompt.prompt()
@@ -67,10 +70,14 @@ class Coral:
                     response = self.register.execute_command(command, "Console", -1, *args)
                     print(response)
                 except Exception as e:
-                    logger.error(f"Error executing command: {e}")
+                    logger.error(Fore.RED + f"Error executing command: {e}" + Fore.RESET)
+                    logger.warning(Fore.YELLOW + f"You can continue to use Console, but we recommand you to check your command or plugin." + Fore.RESET)                    
         except KeyboardInterrupt:
-            logger.info("Exiting...")
-            os._exit(0)
+            self.stopping()
+
+    def stopping(self):
+        logger.info("Stopping Coral...")
+        os._exit(0)
 
     def ws_thread(self, config, register, process_reply):
         logger.info("Starting WebSocket Server...")
