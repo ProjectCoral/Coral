@@ -52,12 +52,10 @@ class PluginManager:
                     module.register_event(self.register, self.config, self.perm_system)
                 if hasattr(module, 'register_function'):
                     module.register_function(self.register, self.config, self.perm_system)
-        self.register.register_command("plugins", "List all available plugins", self.show_plugins)
         self.perm_system.register_perm("pluginmanager", "Base Permission")
         self.perm_system.register_perm("pluginmanager.show_plugins", "Permission to show available plugins")
+        self.register.register_command("plugins", "List all available plugins", self.show_plugins, ["pluginmanager", "pluginmanager.show_plugins"])
         logger.info(f"Loaded {len(self.plugins)} plugins")
 
-    def show_plugins(self, user_id, group_id, *args):
-        if not self.perm_system.check_perm(["pluginmanager", "pluginmanager.show_plugins"], user_id, group_id):
-            return "You do not have permission."
-        return  "Available plugins:\n" + str(self.plugins) + "\n Running Plugin Manager version " + self.pluginmanager_version + "\n"
+    def show_plugins(self, *args):
+        return  "Available plugins:\n" + str(self.plugins) + "\n Running Plugin Manager Version " + self.pluginmanager_version + "\n"
