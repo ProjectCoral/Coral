@@ -37,7 +37,7 @@ class Coral:
         self.perm_system = PermSystem(self.register, self.config)
         self.plugin_manager = PluginManager(self.register, self.config, self.perm_system)
 
-        self.config.set("coral_version", "241020_early_developement")
+        self.config.set("coral_version", "241021_early_developement")
 
         self.register_buildin_plugins()
 
@@ -50,7 +50,7 @@ class Coral:
         
         end_time = time.time()
 
-        logger.info(f"Coral initialized in {end_time - start_time:.2f} seconds.")
+        logger.info(Fore.GREEN + f"Coral initialized in {end_time - start_time:.2f} seconds." + Fore.RESET)
 
         logger.info("All things works fine\U0001F60B, starting client...")
         threading.Thread(target=self.ws_thread, args=(self.config,self.register,self.process_reply.process_message),).start()
@@ -69,7 +69,13 @@ class Coral:
         time.sleep(3) # 等待适配器加载完成
         try:
             while True:
-                im_text = AutoPrompt.prompt()
+                try:
+                    im_text = AutoPrompt.prompt()
+                except Exception:
+                    logger.error(Fore.RED + "Error in AutoPrompt, console input will not be available." + Fore.RESET)
+                    logger.warning(Fore.YELLOW + "After disabled input, some unexpected errors may occur." + Fore.RESET)  
+                    disabled_console = True
+                    break
                 try:
                     command, *args = im_text.split(" ", 1)
                 except ValueError:
@@ -83,6 +89,24 @@ class Coral:
                     logger.warning(Fore.YELLOW + f"You can continue to use Console, but we recommand you to check your command or plugin." + Fore.RESET)  
                     continue                  
         except KeyboardInterrupt:
+            self.stopping()
+        except Exception as e:
+            logger.critical(Fore.RED + f"Unknown error occured: {e}" + Fore.RESET)
+            logger.error("This error should not happen.\U0001F630")
+            logger.error("Coral will be stopped.")
+            self.stopping()
+
+        try:
+            if disabled_console:
+                try:
+                    while True:
+                        time.sleep(5)
+                except KeyboardInterrupt:
+                    self.stopping()
+        except Exception as e:
+            logger.critical(Fore.RED + f"Unknown error occured: {e}" + Fore.RESET)
+            logger.error("This error should not happen.\U0001F630")
+            logger.error("Coral will be stopped.")
             self.stopping()
 
     def stopping(self):
