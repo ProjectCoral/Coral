@@ -20,32 +20,32 @@ class ProcessReply:
             logger.warning(Fore.YELLOW + 'process_text function is not registered, process text will not be working.' + Fore.RESET)
             self.process_text = None
         else:
-            self.process_text = self.register.execute_function('process_text')
+            self.process_text = "Callable"
         if 'process_image' not in self.register.functions:
             logger.warning(Fore.YELLOW + 'process_image function is not registered, process image will not be working.' + Fore.RESET)
             self.process_image = None
         else:
-            self.process_image = self.register.execute_function('process_image')
+            self.process_image = "Callable"
         if 'process_video' not in self.register.functions:
             logger.warning(Fore.YELLOW + 'process_video function is not registered, process video will not be working.' + Fore.RESET)
             self.process_video = None
         else:
-            self.process_video = self.register.execute_function('process_video')
+            self.process_video = "Callable"
         if 'process_audio' not in self.register.functions:
             logger.warning(Fore.YELLOW + 'process_audio function is not registered, process audio will not be working.' + Fore.RESET)
             self.process_audio = None
         else:
-            self.process_audio = self.register.execute_function('process_audio')
+            self.process_audio = "Callable"
         if 'search_memory' not in self.register.functions:
             logger.warning(Fore.YELLOW +'search_memory function is not registered, search memory will not be working.' + Fore.RESET)
             self.search_memory = None
         else:
-            self.search_memory = self.register.execute_function('search_memory')
+            self.search_memory = "Callable"
         if 'store_memory' not in self.register.functions:
             logger.warning(Fore.YELLOW +'store_memory function is not registered, store memory will not be working.' + Fore.RESET)
             self.store_memory = None
         else:
-            self.store_memory = self.register.execute_function('store_memory')
+            self.store_memory = "Callable"
 
 
     async def process_message(self, message):
@@ -73,14 +73,23 @@ class ProcessReply:
                 logger.info(f'Received message from {sender_user_id} in group {group_id}, but it is not an at message and reply rate is too low.')
                 return None
             
-        if is_image and self.process_image:
-            send_message = await self.process_image({"image_url": image_url, "sender_user_id": sender_user_id, "group_id": group_id})
+        if self.search_memory is not None:
+            memory = self.register.execute_function('search_memory', {"sender_user_id": sender_user_id, "group_id": group_id})
+        else:
+            memory = None
+
+        if is_image:
+            if self.process_image:
+                send_message = await self.register.execute_function('process_image', {"image_url": image_url, "sender_user_id": sender_user_id, "group_id": group_id})
+            else:
+                return None
         elif self.process_text:
-            if self.store_memory is not None:
-                memory = self.search_memory({"sender_user_id": sender_user_id, "group_id": group_id})
-            send_message = await self.process_text({"message": processed_message, "memory": memory, "sender_user_id": sender_user_id, "group_id": group_id})
+            send_message = await self.register.execute_function('process_text', {"message": processed_message, "memory": memory, "sender_user_id": sender_user_id, "group_id": group_id})
         else:
             logger.warning(Fore.YELLOW + 'No process function is registered, message will not be processed.' + Fore.RESET)
+            return None
+        
+        if send_message['message'] is None:
             return None
         await self.finish_reply(processed_message,send_message)
         return send_message
@@ -90,7 +99,7 @@ class ProcessReply:
         sender_user_id = send_message['sender_user_id']
         group_id = send_message['group_id']
         if self.store_memory is not None:
-            self.store_memory({"message": message,"reply": reply,"sender_user_id": sender_user_id, "group_id": group_id})
+            await self.register.execute_function('store_memory', {"message": message,"reply": reply,"sender_user_id": sender_user_id, "group_id": group_id})
 
     def is_image_message(self, message: str) -> tuple[bool, str]:
         """

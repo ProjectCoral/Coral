@@ -71,7 +71,8 @@ class Coral:
                     print(response)
                 except Exception as e:
                     logger.error(Fore.RED + f"Error executing command: {e}" + Fore.RESET)
-                    logger.warning(Fore.YELLOW + f"You can continue to use Console, but we recommand you to check your command or plugin." + Fore.RESET)                    
+                    logger.warning(Fore.YELLOW + f"You can continue to use Console, but we recommand you to check your command or plugin." + Fore.RESET)  
+                    continue                  
         except KeyboardInterrupt:
             self.stopping()
 

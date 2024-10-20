@@ -61,8 +61,13 @@ class ReverseWS:
                         prepared_result = await self.register.execute_event('prepare_reply', formatted_data)
                         if prepared_result['message'] is not None:
                             logger.info(f"回复{prepared_result['message']}")
-                            reply_json = await build_reply_json(prepared_result['message'], prepared_result['sender_user_id'], prepared_result['group_id'])
-                            await websocket.send_text(reply_json)
+                            if isinstance(prepared_result['message'], list):
+                                for item in prepared_result['message']:
+                                    reply_json = await build_reply_json(item, prepared_result['sender_user_id'], prepared_result['group_id'])
+                                    await websocket.send_text(reply_json)
+                            else:
+                                reply_json = await build_reply_json(prepared_result['message'], prepared_result['sender_user_id'], prepared_result['group_id'])
+                                await websocket.send_text(reply_json)
                             continue
                             
                     result = await self.process_reply(formatted_data)
@@ -76,8 +81,14 @@ class ReverseWS:
                     group_id = result['group_id']
 
                     logger.info(f"回复{reply_item}")
-                    reply_json = await build_reply_json(reply_item, sender_user_id, group_id)
-                    await websocket.send_text(reply_json)
+
+                    if isinstance(reply_item, list):
+                        for item in reply_item:
+                            reply_json = await build_reply_json(item, sender_user_id, group_id)
+                            await websocket.send_text(reply_json)
+                    else:
+                        reply_json = await build_reply_json(reply_item, sender_user_id, group_id)
+                        await websocket.send_text(reply_json)
 
             except json.JSONDecodeError:
                 logger.error(Fore.RED + "JSONDecodeError" + Fore.RESET)
