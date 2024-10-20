@@ -5,3 +5,4 @@ apscheduler
 sentencepiece
 pyfiglet
 colorama
+prompt_toolkit

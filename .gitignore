@@ -163,3 +163,4 @@ cache
 config.json
 coral.perms
 model
+.vscode

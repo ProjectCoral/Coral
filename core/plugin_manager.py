@@ -22,6 +22,7 @@ class PluginManager:
         if not os.path.exists(self.plugin_dir):
             logger.warning(Fore.YELLOW + f"Plugin directory {self.plugin_dir} does not exist, skipping plugin loading" + Fore.RESET)
         else:
+            logger.info(f"Loading plugins from {self.plugin_dir}")
             for plugin_name in os.listdir(self.plugin_dir):
                 plugin_path = os.path.join(self.plugin_dir, plugin_name)
                 if not os.path.isdir(plugin_path):

@@ -4,6 +4,32 @@
 
 如果有问题，请在 [GitHub issues](https://github.com/ProjectCoral/Coral/issues) 中反馈。
 
+## 目录结构
+
+    ```
+    Coral
+    ├── config.json
+    ├── plugins
+    │   ├── plugin1
+    │   │   ├── plugin.py
+    │   │   └── config.json
+    │   ├── plugin2
+    │   │   ├── plugin.py
+    │   │   └── config.json
+    │   └──...
+    ├── logs
+    ├── data
+    ├── config
+    ├──...
+    └── main.py
+    ```
+
+- `config.json`：配置文件，包含框架的全局配置信息。
+- `plugins`：插件目录，包含所有需加载的插件。
+- `data`：数据目录，包含插件运行数据。
+- `config`：配置目录，包含插件运行配置。
+- `main.py`：启动文件。
+
 ## 启动
 
 想要部署并使用 Coral 机器人框架，只需要下载最新版的 Coral 代码。安装所需依赖并启动服务。详情请参阅 [快速部署](QuickStart.md)。
@@ -34,5 +60,7 @@
 Coral 项目支持插件机制，可以方便地扩展功能。
 
 插件目录为 `./plugins`，插件名称会自动取自插件目录名。
+
+> Coral 官方为 [Muice-Chatbot](https://github.com/Moemu/Muice-Chatbot) 重构的插件：[Muice-Chatbot-Plugin](https://github.com/ProjectCoral/Muice_Chatbot_Plugin)。
 
 关于编写插件，请参考[插件开发文档](PluginDev.md)。
