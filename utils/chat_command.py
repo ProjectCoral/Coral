@@ -2,7 +2,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def register_event(register, config, perm_system):
+def register_plugin(register, config, perm_system):
     register.register_event('prepare_reply', 'chat_command', ChatCommand(register, perm_system).chat_command, 1)
     perm_system.register_perm("chat_command", "Base Permission")
     perm_system.register_perm("chat_command.execute", "Allows the user to execute commands in chat")

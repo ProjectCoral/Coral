@@ -10,10 +10,10 @@ Coral 内置了权限系统，用户可以根据自己的需求进行权限控�
 
 1. 注册权限
 
-    在初步编写好 `register_command` 函数后，它看起来是这样的：
+    在初步编写好 `register_plugin` 函数后，它看起来是这样的：
 
     ```python
-    def register_command(register, config, perm_system):
+    def register_plugin(register, config, perm_system):
         register.register_command("fetch_bot_id", "Fetch bot id", TestCommand(register, config).fetch_bot_id)
     ```
 
@@ -29,7 +29,7 @@ Coral 内置了权限系统，用户可以根据自己的需求进行权限控�
 
 2. 绑定权限
 
-    接下来，我们需要在 `register_command` 函数中绑定权限。
+    接下来，我们需要在 `register_plugin` 函数中绑定权限。
 
     Coral 内置的权限系统已经提供了一个快速绑定方式，只需在注册时传入即可：
 
@@ -68,17 +68,17 @@ Coral 内置的权限系统并没有为其他功能提供快捷的接入方式�
 
 1. 注册权限
 
-    首先，我们需要在 `register_event` 函数中注册权限：
+    首先，我们需要在 `register_plugin` 函数中注册权限：
 
     ```python
-        perm_system.register_perm("chat_command", "Base Permission")
+    perm_system.register_perm("chat_command", "Base Permission")
     perm_system.register_perm("chat_command.execute", "Allows the user to execute commands in chat")
     ```
 
     在手动接入时，注册函数无需任何更改，最后的注册代码应该是：
 
     ```python
-    def register_event(register, config, perm_system):
+    def register_plugin(register, config, perm_system):
         register.register_event('prepare_reply', 'chat_command', ChatCommand(register, perm_system).chat_command, 1)
 
         perm_system.register_perm("chat_command", "Base Permission")

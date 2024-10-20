@@ -26,7 +26,7 @@
 
 2. 插件逻辑： 
 
-    - 插件的主文件必须包含名为 `register_command` /`register_event` / `register_function`  的函数，该函数会在插件被注册时被调用。
+    - 插件的主文件必须包含名为 `register_plugin`  的函数，该函数会在插件被注册时被调用。
     具体的注册方式请参考 [插件注册](DevManual/PluginReg.md)。
 
     - 当编写插件时你可以选择接入 Coral 内置的权限系统(详情请参考 [权限系统开发文档](DevManual/PermSystem.md))，也可以自己实现权限系统。

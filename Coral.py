@@ -28,6 +28,8 @@ class Coral:
         self.run()
         
     async def initialize(self):
+        start_time = time.time()
+
         plugin_dir = "./plugins"
         config_file = "./config.json"
         self.config = Config(config_file)
@@ -35,7 +37,7 @@ class Coral:
         self.perm_system = PermSystem(self.register, self.config)
         self.plugin_manager = PluginManager(self.register, self.config, self.perm_system)
 
-        self.config.set("coral_version", "241019_early_developement")
+        self.config.set("coral_version", "241020_early_developement")
 
         self.register_buildin_plugins()
 
@@ -43,18 +45,25 @@ class Coral:
 
         self.process_reply = ProcessReply(self.register, self.config)
 
-        logger.info("All things works fine, starting client...")
+        if 'coral_initialized' in self.register.event_queues:
+            await self.register.execute_event('coral_initialized')
+        
+        end_time = time.time()
+
+        logger.info(f"Coral initialized in {end_time - start_time:.2f} seconds.")
+
+        logger.info("All things works fine\U0001F60B, starting client...")
         threading.Thread(target=self.ws_thread, args=(self.config,self.register,self.process_reply.process_message),).start()
         
         AutoPrompt.load_commands(self.register.commands)
 
     def register_buildin_plugins(self):
         self.plugin_manager.plugins.append("base_commands")
-        utils.commands.register_command(self.register, self.config, self.perm_system)
+        utils.commands.register_plugin(self.register, self.config, self.perm_system)
         self.plugin_manager.plugins.append("install_requirements")
-        utils.install_requirements.register_function(self.register, self.config, self.perm_system)
+        utils.install_requirements.register_plugin(self.register, self.config, self.perm_system)
         self.plugin_manager.plugins.append("chat_command")
-        utils.chat_command.register_event(self.register, self.config, self.perm_system)
+        utils.chat_command.register_plugin(self.register, self.config, self.perm_system)
 
     def run(self):
         time.sleep(3) # 等待适配器加载完成
@@ -78,6 +87,8 @@ class Coral:
 
     def stopping(self):
         logger.info("Stopping Coral...")
+        if 'coral_shutdown' in self.register.event_queues:
+            asyncio.run(self.register.execute_event('coral_shutdown'))
         os._exit(0)
 
     def ws_thread(self, config, register, process_reply):

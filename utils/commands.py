@@ -1,6 +1,7 @@
 import os
+import time
 
-def register_command(register, config, perm_system):
+def register_plugin(register, config, perm_system):
     perm_system.register_perm("base_commands", "Base Permission")
     perm_system.register_perm("base_commands.help", "User can use the help command")
     perm_system.register_perm("base_commands.clear", "User can clear the cache")
@@ -8,6 +9,7 @@ def register_command(register, config, perm_system):
     register.register_command('help', 'Show help message', base_commands(register, config, perm_system).show_help, ["base_commands", "base_commands.help"])
     register.register_command('clear', 'Clear cache', base_commands(register, config, perm_system).clear_cache, ["base_commands", "base_commands.clear"])
     register.register_command('status', 'Show status of Coral', base_commands(register, config, perm_system).status, ["base_commands", "base_commands.status"])
+    register.register_event("coral_initialized", "init_time", base_commands(register, config, perm_system).init_timer, 1)
 
 class base_commands:
     register = None
@@ -18,7 +20,13 @@ class base_commands:
         self.register = register
         self.config = config
         self.perm_system = perm_system
-
+        self.init_time = None
+        
+    async def init_timer(self, *args):
+        global init_time
+        init_time = time.time()
+        return None, False, 1
+    
     def show_help(self, *args):
         return "List of available commands:\n" + "\n".join([f"{command_name}: {self.register.get_command_description(command_name)}" for command_name in self.register.commands])
     
@@ -33,5 +41,8 @@ class base_commands:
         message += "Coral Version: " + self.config.get("coral_version") + "\n"
         message += self.register.execute_command('plugins', "Console", -1)
         message += "Total registered " + str(len(self.perm_system.registered_perms)) + " permissions\n"
-        message += f"Hello from Coral!"
+        uptime = time.time() - init_time
+        day, hour, minute, second = uptime // (24 * 3600), uptime // 3600 % 24, uptime // 60 % 60, uptime % 60
+        message += f"Uptime: {int(day)} day(s) {int(hour)} hour(s) {int(minute)} minute(s) {int(second)} second(s)\n"
+        message += f"Hello from Coral!\U0001F60B"
         return message

@@ -10,7 +10,7 @@ class Register:
         self.command_descriptions = {}
         self.command_permissions = {}
         self.functions = {}
-        self.default_events = ["client_connected", "client_disconnected", "prepare_reply", "finish_reply"]
+        self.default_events = ["coral_initialized", "coral_shutdown", "client_connected", "client_disconnected", "prepare_reply", "finish_reply"]
 
     def hook_perm_system(self, perm_system):
         self.perm_system = perm_system

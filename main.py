@@ -18,7 +18,7 @@ if not os.path.exists('config.json'):
             subprocess.check_call([sys.executable, '-m', 'pip', 'show', line.strip()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError as e:
             logging.critical(Fore.RED + "Failed to check requirement: {}".format(line.strip()) + Fore.RESET)
-            logging.error("Did you install it?")
+            logging.error("Did you install it?\U0001F605")
             sys.exit(1)
 
 logging.info("Cleaning up __pycache__ directories...")
