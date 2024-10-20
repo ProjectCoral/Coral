@@ -42,13 +42,13 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
 
 2. 注册命令：
 
-    在 `main.py` 中，添加 `register_command` 函数，并传入命令名称、命令描述、命令执行函数。
+    在 `main.py` 中，添加 `register_plugin` 函数，并传入命令名称、命令描述、命令执行函数。
 
 
     **注意**: 命令名称必须唯一，否则会覆盖已注册的命令。
 
     ```python
-    def register_command(register, config, perm_system):
+    def register_plugin(register, config, perm_system):
         register.register_command("sayhello", "Say hello to someone", sayhello)
 
         register.register_command("howmanycommands", "How many commands are registered", TestCommand(register, config).howmanycommands)
@@ -122,7 +122,7 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
 
 2. 注册事件：
 
-    在 `main.py` 中，添加 `register_event` 函数，并传入事件类型、事件名称、事件执行函数、执行优先级。
+    在 `main.py` 中，添加 `register_plugin` 函数，并传入事件类型、事件名称、事件执行函数、执行优先级。
 
     目前支持的事件类型有：
     - `client_connected`: 当客户端连接到 Coral 时触发。
@@ -134,7 +134,7 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
     **注意**: 事件名称可以不唯一，但我还是不推荐这么做，因为可能会导致事件的执行顺序混乱。
 
     ```python
-    def register_event(register, config, perm_system):
+    def register_plugin(register, config, perm_system):
         register.register_event("prepare_reply", "Receivemessage", on_message, 1)
 
         register.register_event("prepare_reply", "Receivemessage",TestEvent(register, config).on_message, 1)
@@ -178,10 +178,10 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
 
 2. 注册函数：
 
-    在 `main.py` 中，添加 `register_function` 函数，并传入函数名称、函数执行函数。
+    在 `main.py` 中，添加 `register_plugin` 函数，并传入函数名称、函数执行函数。
 
     ```python
-    def register_function(register, config, perm_system):
+    def register_plugin(register, config, perm_system):
         register.register_function("on_function_call", on_function_call)
 
         register.register_function("on_function_call", TestFunction(register, config).on_function_call)

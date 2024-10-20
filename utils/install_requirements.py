@@ -2,11 +2,12 @@ import os
 import subprocess
 import sys
 import logging
+import re
 from colorama import Fore
 
 logger = logging.getLogger(__name__)
 
-def register_function(register, config, perm_system):
+def register_plugin(register, config, perm_system):
     register.register_function('install_pip_requirements', InstallRequirements(config).install_pip_requirements)
     register.register_function('check_pip_requirements', InstallRequirements(config).check_pip_requirements)
 
@@ -32,14 +33,21 @@ class InstallRequirements:
         if not os.path.exists(requirements_file):
             logger.error(Fore.RED + "Requirements file not found: {}".format(requirements_file) + Fore.RESET)
             return False
+        
         with open(requirements_file, 'r') as f:
             lines = f.readlines()
+        
         for line in lines:
             if line.startswith('#') or line.strip() == '':
                 continue
+            
+            # 解析包名
+            package_name = re.split('>=|>|<=|<|==|!=', line.strip())[0].strip()
+            
             try:
-                subprocess.check_call([sys.executable, '-m', 'pip', 'show', line.strip()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.check_call([sys.executable, '-m', 'pip', 'show', package_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except subprocess.CalledProcessError as e:
                 logger.error(Fore.RED + "Failed to check requirement: {}".format(line.strip()) + Fore.RESET)
                 return False
+        
         return True
