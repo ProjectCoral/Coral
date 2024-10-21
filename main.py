@@ -28,9 +28,14 @@ for root, dirs, files in os.walk('./'):
             pycache_dir = os.path.join(root, dir_name)
             shutil.rmtree(pycache_dir)
             logging.debug("Removed {}".format(pycache_dir))
-
-from Coral import Coral
+      
 
 if __name__ == '__main__':
     logging.info("Starting Coral...")
-    Coral()
+    try:
+        from Coral import Coral
+        Coral()
+    except Exception as e:
+        logging.exception(Fore.RED + "An error occurred: {}".format(str(e)) + Fore.RESET)
+        logging.critical("Oops, Coral has crashed.\U0001F605 Please check the logs for more information.")
+        os._exit(1)

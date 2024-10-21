@@ -45,7 +45,7 @@ class PluginManager:
                     module = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(module)
                 except Exception as e:
-                    logger.error(Fore.RED + "During plugin loading, an error occurred: " + str(e) + Fore.RESET)
+                    logger.exception(Fore.RED + f"During plugin loading, an error occurred: {e}" + Fore.RESET)
                     logger.error(Fore.RED + "Failed to load plugin " + Fore.RESET + str(plugin_name) + Fore.RED + " , skipping" + Fore.RESET)
                     if os.path.exists(requirements_file + ".coral_installed"):
                         os.remove(requirements_file + ".coral_installed")
@@ -61,7 +61,7 @@ class PluginManager:
                 if hasattr(module, 'register_plugin'):
                     module.register_plugin(self.register, self.config, self.perm_system)
                 else:
-                    logger.warning(Fore.YELLOW + "Plugin " + Fore.RESET + str(plugin_name) + Fore.YELLOW + " did not provide a register function, plugin will not do anything" + Fore.RESET)
+                    logger.warning(Fore.YELLOW + "Plugin " + Fore.RESET + str(plugin_name) + Fore.YELLOW + " did not provide a register function, will not do anything" + Fore.RESET)
 
         self.perm_system.register_perm("pluginmanager", "Base Permission")
         self.perm_system.register_perm("pluginmanager.show_plugins", "Permission to show available plugins")

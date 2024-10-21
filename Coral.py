@@ -52,6 +52,11 @@ class Coral:
 
         logger.info(Fore.GREEN + f"Coral initialized in {end_time - start_time:.2f} seconds." + Fore.RESET)
 
+        last_init_time = self.config.get("last_init_time", end_time - start_time)
+        if end_time - start_time < last_init_time:
+            logger.info(Fore.CYAN + f"Coral initialize boosted\U0001F680 by {last_init_time - end_time + start_time:.2f} seconds." + Fore.RESET)
+        self.config.set("last_init_time", end_time - start_time)
+
         logger.info("All things works fine\U0001F60B, starting client...")
         threading.Thread(target=self.ws_thread, args=(self.config,self.register,self.process_reply.process_message),).start()
         
@@ -85,14 +90,14 @@ class Coral:
                     response = self.register.execute_command(command, "Console", -1, *args)
                     print(response)
                 except Exception as e:
-                    logger.error(Fore.RED + f"Error executing command: {e}" + Fore.RESET)
+                    logger.exception(Fore.RED + f"Error executing command: {e}" + Fore.RESET)
                     logger.warning(Fore.YELLOW + f"You can continue to use Console, but we recommand you to check your command or plugin." + Fore.RESET)  
                     continue                  
         except KeyboardInterrupt:
             self.stopping()
         except Exception as e:
-            logger.critical(Fore.RED + f"Unknown error occured: {e}" + Fore.RESET)
-            logger.error("This error should not happen.\U0001F630")
+            logger.exception(Fore.RED + f"Unknown error occured: {e}" + Fore.RESET)
+            logger.exception("This error should not happen.\U0001F630")
             logger.error("Coral will be stopped.")
             self.stopping()
 
@@ -104,8 +109,8 @@ class Coral:
                 except KeyboardInterrupt:
                     self.stopping()
         except Exception as e:
-            logger.critical(Fore.RED + f"Unknown error occured: {e}" + Fore.RESET)
-            logger.error("This error should not happen.\U0001F630")
+            logger.exception(Fore.RED + f"Unknown error occured: {e}" + Fore.RESET)
+            logger.critical("This error should not happen.\U0001F630")
             logger.error("Coral will be stopped.")
             self.stopping()
 
@@ -117,7 +122,12 @@ class Coral:
 
     def ws_thread(self, config, register, process_reply):
         logger.info("Starting WebSocket Server...")
-        try:
-            ReverseWS(config, register, process_reply).start()
-        except KeyboardInterrupt:
-            pass
+        while True:
+            try:
+                ReverseWS(config, register, process_reply).start()
+            except KeyboardInterrupt:
+                break
+            except Exception as e:
+                logger.exception(Fore.RED + f"Error in WebSocket Server: {e}" + Fore.RESET)
+                time.sleep(3)
+                logger.warning(Fore.YELLOW + "Restarting WebSocket Server..." + Fore.RESET)
