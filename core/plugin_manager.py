@@ -14,7 +14,7 @@ class PluginManager:
         self.config = config
         self.perm_system = perm_system
         self.plugin_dir = self.config.get("plugin_dir", "./plugins")
-        self.config.set("pluginmanager_version", "241020_early_developement")
+        self.config.set("pluginmanager_version", "241021_early_developement")
         self.pluginmanager_version = self.config.get("pluginmanager_version")
         self.register = register
         self.plugins = []
@@ -31,30 +31,49 @@ class PluginManager:
                 main_file = os.path.join(plugin_path, 'main.py')
                 if not os.path.exists(main_file):
                     continue
+
                 requirements_file = os.path.join(plugin_path,'requirements.txt')
                 if os.path.exists(requirements_file):
-                    if not await self.register.execute_function("check_pip_requirements", requirements_file):
+                    if not os.path.exists(requirements_file + ".coral_installed") and not await self.register.execute_function("check_pip_requirements", requirements_file):
                         logger.warning(Fore.YELLOW + "Plugin " + Fore.RESET + str(plugin_name) + Fore.YELLOW + " has unmet requirements, trying to install them" + Fore.RESET)
                         if not await self.register.execute_function("install_pip_requirements", requirements_file):
                             logger.error(Fore.RED + "Failed to install requirements for plugin " + Fore.RESET + str(plugin_name) + Fore.RED + " , skipping" + Fore.RESET)
                             continue
-                spec = importlib.util.spec_from_file_location("main", main_file)
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
+
+                try:
+                    spec = importlib.util.spec_from_file_location("main", main_file)
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                except Exception as e:
+                    logger.exception(Fore.RED + f"During plugin loading, an error occurred: {e}" + Fore.RESET)
+                    logger.error(Fore.RED + "Failed to load plugin " + Fore.RESET + str(plugin_name) + Fore.RED + " , skipping" + Fore.RESET)
+                    if os.path.exists(requirements_file + ".coral_installed"):
+                        os.remove(requirements_file + ".coral_installed")
+                    continue
+
                 if hasattr(module, 'check_conpatibility'):
                     if not module.check_conpatibility(self.pluginmanager_version):
                         logger.error(Fore.RED + "Plugin " + Fore.RESET + str(plugin_name) + Fore.RED + " is not compatible with this version of the Plugin Manager, skipping" + Fore.RESET)
                         continue
                 else:
-                    logger.warning(Fore.YELLOW + "Plugin " + Fore.RESET + str(plugin_name) + Fore.YELLOW + " did not provide a compatibility check, which is deprecated and will be broken in a future version" + Fore.RESET)
+                    logger.warning(Fore.YELLOW + "Plugin " + Fore.RESET + str(plugin_name) + Fore.YELLOW + " did not provide a compatibility check, which is deprecated and might be broken in a future version" + Fore.RESET)
                 self.plugins.append(plugin_name)
                 if hasattr(module, 'register_plugin'):
-                    module.register_plugin(self.register, self.config, self.perm_system)
+                    try:
+                        module.register_plugin(self.register, self.config, self.perm_system)
+                    except Exception as e:
+                        logger.exception(Fore.RED + f"During plugin registration, an error occurred: {e}" + Fore.RESET)
+                        logger.error(Fore.RED + "Failed to register plugin " + Fore.RESET + str(plugin_name) + Fore.RED + " , skipping" + Fore.RESET)
+                        continue
+                else:
+                    logger.warning(Fore.YELLOW + "Plugin " + Fore.RESET + str(plugin_name) + Fore.YELLOW + " did not provide a register function, will not do anything" + Fore.RESET)
 
         self.perm_system.register_perm("pluginmanager", "Base Permission")
         self.perm_system.register_perm("pluginmanager.show_plugins", "Permission to show available plugins")
         self.register.register_command("plugins", "List all available plugins", self.show_plugins, ["pluginmanager", "pluginmanager.show_plugins"])
         logger.info(f"Loaded {len(self.plugins)} plugins")
+
+
 
     def show_plugins(self, *args):
         return  "Available plugins:\n" + str(self.plugins) + "\n Running Plugin Manager Version " + self.pluginmanager_version + "\n"

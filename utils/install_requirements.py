@@ -34,6 +34,9 @@ class InstallRequirements:
             logger.error(Fore.RED + "Requirements file not found: {}".format(requirements_file) + Fore.RESET)
             return False
         
+        if os.path.exists(requirements_file + ".coral_installed"):
+            return True
+
         with open(requirements_file, 'r') as f:
             lines = f.readlines()
         
@@ -50,4 +53,7 @@ class InstallRequirements:
                 logger.error(Fore.RED + "Failed to check requirement: {}".format(line.strip()) + Fore.RESET)
                 return False
         
+        with open(requirements_file + ".coral_installed", 'w') as f:
+            f.write("Installed")
+
         return True
