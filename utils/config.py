@@ -24,8 +24,14 @@ class Config:
             logger.warning(Fore.YELLOW + "Config file not found, creating a default one." + Fore.RESET)
             self.config = main_config_template
         else:
-            with open(config, "r") as f:
-                self.config = json.load(f)
+            try:
+                with open(config, "r") as f:
+                    self.config = json.load(f)
+            except Exception as e:
+                logger.exception(Fore.RED + f"Error loading config file: {e}" + Fore.RESET)
+                logger.warning(Fore.YELLOW + "Backing up and creating a default one." + Fore.RESET)
+                os.rename(config, config + ".bak")
+                self.config = main_config_template
 
     def get(self, key, default=None):
         value = self.config.get(key, default)

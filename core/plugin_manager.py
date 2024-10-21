@@ -59,7 +59,12 @@ class PluginManager:
                     logger.warning(Fore.YELLOW + "Plugin " + Fore.RESET + str(plugin_name) + Fore.YELLOW + " did not provide a compatibility check, which is deprecated and might be broken in a future version" + Fore.RESET)
                 self.plugins.append(plugin_name)
                 if hasattr(module, 'register_plugin'):
-                    module.register_plugin(self.register, self.config, self.perm_system)
+                    try:
+                        module.register_plugin(self.register, self.config, self.perm_system)
+                    except Exception as e:
+                        logger.exception(Fore.RED + f"During plugin registration, an error occurred: {e}" + Fore.RESET)
+                        logger.error(Fore.RED + "Failed to register plugin " + Fore.RESET + str(plugin_name) + Fore.RED + " , skipping" + Fore.RESET)
+                        continue
                 else:
                     logger.warning(Fore.YELLOW + "Plugin " + Fore.RESET + str(plugin_name) + Fore.YELLOW + " did not provide a register function, will not do anything" + Fore.RESET)
 
