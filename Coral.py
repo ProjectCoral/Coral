@@ -1,4 +1,5 @@
 import os
+import sys
 import threading
 import time
 import logging
@@ -41,7 +42,7 @@ class Coral:
 
         self.register_buildin_plugins()
 
-        await self.plugin_manager.load_plugins()
+        await self.plugin_manager.load_all_plugins()
 
         self.process_reply = ProcessReply(self.register, self.config)
 
@@ -59,8 +60,6 @@ class Coral:
 
         logger.info("All things works fine\U0001F60B, starting client...")
         threading.Thread(target=self.ws_thread, args=(self.config,self.register,self.process_reply.process_message),).start()
-        
-        AutoPrompt.load_commands(self.register.commands)
 
     def register_buildin_plugins(self):
         self.plugin_manager.plugins.append("base_commands")
@@ -69,9 +68,11 @@ class Coral:
         utils.install_requirements.register_plugin(self.register, self.config, self.perm_system)
         self.plugin_manager.plugins.append("chat_command")
         utils.chat_command.register_plugin(self.register, self.config, self.perm_system)
+        self.register.register_command("stop", "Stop Coral", self.stopping, "ALL")
 
     def run(self):
         time.sleep(3) # 等待适配器加载完成
+        AutoPrompt.load_commands(self.register.commands)
         try:
             while True:
                 try:
