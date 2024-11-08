@@ -38,7 +38,7 @@ class Coral:
         self.perm_system = PermSystem(self.register, self.config)
         self.plugin_manager = PluginManager(self.register, self.config, self.perm_system)
 
-        self.config.set("coral_version", "241021_early_developement")
+        self.config.set("coral_version", "241109_early_developement")
 
         self.register_buildin_plugins()
 
@@ -115,7 +115,7 @@ class Coral:
             logger.error("Coral will be stopped.")
             self.stopping()
 
-    def stopping(self):
+    def stopping(self, *args, **kwargs):
         logger.info("Stopping Coral...")
         if 'coral_shutdown' in self.register.event_queues:
             asyncio.run(self.register.execute_event('coral_shutdown'))

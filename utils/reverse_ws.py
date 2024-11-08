@@ -165,7 +165,7 @@ class ReverseWS:
                 else:
                     logger.warning(f"未知消息类型：{data['message_type']}")
                     return None
-                return {"raw_message": raw_message,"sender_user_id": sender_user_id, "group_id": group_id}
+                return {"message": raw_message,"sender_user_id": sender_user_id, "group_id": group_id}
             
             else:
                 logger.warning(f"未知数据类型：{data}")

@@ -25,7 +25,7 @@ class base_commands:
     async def init_timer(self, *args):
         global init_time
         init_time = time.time()
-        return None, False, 1
+        return None, False, False, 1
     
     def show_help(self, *args):
         return "List of available commands:\n" + "\n".join([f"{command_name}: {self.register.get_command_description(command_name)}" for command_name in self.register.commands])
