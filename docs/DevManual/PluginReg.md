@@ -88,6 +88,7 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
 
     在返回数据时，你需要包含：
     - 处理后的信息(打包成字典)
+    - 是否处理过信息(`True` / `False`)
     - 是否继续执行后续插件(`True` / `False`)
     - 中断后更改事件优先级(数字越小，优先级越高)
     
@@ -96,8 +97,8 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
     示例函数：
     ```python
     async def on_message(self, message):
-        logging.info(f"Received message: {message['raw_message']}")
-        return message, False, 1
+        logging.info(f"Received message: {message['message']}")
+        return message, False, False, 1
     ```
 
     你也可以定义一个类，此时可以传递 Coral 的 `register` 和 `config` 类，这样可以调用其他行为\获取全局配置。
@@ -113,11 +114,11 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
             self.config = config
 
         async def on_message(self, message):
-            logging.info(f"Received message: {message['raw_message']}")
+            logging.info(f"Received message: {message['message']}")
         
         async def connected(self):
             logging.info("Client connected")
-            return 0, False, 1
+            return None, False, False, 1
     ```
 
 2. 注册事件：

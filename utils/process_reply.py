@@ -52,7 +52,7 @@ class ProcessReply:
         """
         处理格式化消息。
         """
-        raw_message = message['raw_message']
+        raw_message = message['message']
         sender_user_id = message['sender_user_id']
         group_id = message['group_id']
         

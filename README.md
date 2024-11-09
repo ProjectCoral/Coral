@@ -61,6 +61,7 @@
 > 如果你希望快速部署一个 Coral 机器人，安装插件、并投入使用，请看这里：[快速部署](docs/QuickStart.md)
 - **用户手册**: [UserManual](docs/UserManual.md)
 - **插件开发**: [PluginDev](docs/PluginDev.md)
+> 有关更多插件，请访问 [Coral 插件库](https://github.com/ProjectCoral/Coral_Plugins)。
 
 ## 开发相关
 

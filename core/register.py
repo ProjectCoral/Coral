@@ -72,12 +72,15 @@ class Register:
         change_priority = None
         if event not in self.event_queues:
             raise ValueError(f"Event {event} not found, probably you forget register it")
+        ori_args = args
         for event_name, func, priority in self.event_queues[event]:
+            logger.debug(f"Executing event {event_name} with args {args}")
             result = await func(*args)
             if result is not None:
-                args = result[0]
-                if isinstance(result, tuple) and len(result) == 3:
-                    _, interrupt, new_priority = result
+                if isinstance(result, tuple) and len(result) == 4:
+                    result_args, change_args, interrupt, new_priority = result
+                    if change_args:
+                        args = (result_args,)
                     if interrupt:
                         interrupted = True
                         change_priority = (event_name, func, new_priority)
@@ -86,6 +89,10 @@ class Register:
             # 如果有中断，则将中断的监听器移动到队列的最前面
             self.event_queues[event].remove(change_priority)
             self.event_queues[event].appendleft(change_priority)
+        if args == ori_args:
+            return result[0]
+        if len(args) == 1 and isinstance(args[0], dict):
+            return args[0]
         return args
 
  

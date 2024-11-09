@@ -12,10 +12,10 @@
     ├── plugins
     │   ├── plugin1
     │   │   ├── plugin.py
-    │   │   └── config.json
+    │   │   └── ...
     │   ├── plugin2
     │   │   ├── plugin.py
-    │   │   └── config.json
+    │   │   └── ...
     │   └──...
     ├── logs
     ├── data
@@ -62,5 +62,7 @@ Coral 项目支持插件机制，可以方便地扩展功能。
 插件目录为 `./plugins`，插件名称会自动取自插件目录名。
 
 > Coral 官方为 [Muice-Chatbot](https://github.com/Moemu/Muice-Chatbot) 重构的插件：[Muice-Chatbot-Plugin](https://github.com/ProjectCoral/Muice_Chatbot_Plugin)。
+
+有关更多插件，请访问 [Coral 插件库](https://github.com/ProjectCoral/Coral_Plugins)。
 
 关于编写插件，请参考[插件开发文档](PluginDev.md)。
