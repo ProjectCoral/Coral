@@ -66,8 +66,8 @@ class PermSystem:
             return "Invalid command format."
         if perm_name not in self.registered_perms:
             return f"Permission {perm_name} not registered."
-        if user_id == -1:
-            self.user_perms[group_id].append(perm_name)
+        if user_id == '-1':  # 修改为字符串
+            self.user_perms[str(group_id)].append(perm_name)
         else:
             self.user_perms[str(user_id)].append((perm_name, str(group_id)))
         self.save_user_perms()
@@ -81,7 +81,7 @@ class PermSystem:
         if perm_name not in self.registered_perms:
             return f"Permission {perm_name} not registered."
         try:
-            if user_id == -1:
+            if user_id == '-1':  # 修改为字符串
                 self.user_perms[str(group_id)].remove(perm_name)
             else:
                 self.user_perms[str(user_id)].remove((perm_name, str(group_id)))
@@ -103,7 +103,7 @@ class PermSystem:
         if perm_name not in self.registered_perms:
             logger.warning(Fore.YELLOW + f"Permission {perm_name} not registered, ingoring it." + Fore.RESET)
             return True
-        if user_id == -1:
+        if user_id == '-1':
             if perm_name in self.user_perms[str(group_id)]:
                 return True
             return False
@@ -135,6 +135,11 @@ class PermSystem:
     def list_perms(self, *args):
         message = "User Permissions:\n"
         for user, perms in self.user_perms.items():
+            if user == '-1':
+                message += f"Group {user}: "
+                for perm in perms:
+                    message += f"  {perm}\n"
+                continue
             message += f"User {user}:\n"
             for perm in perms:
                 if isinstance(perm, str):
