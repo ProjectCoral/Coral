@@ -1,7 +1,6 @@
 import os
 import json
 import logging
-from colorama import Fore
 
 logger = logging.getLogger(__name__)
 
@@ -21,15 +20,15 @@ class Config:
 
     def load_config(self, config):
         if not os.path.exists(config):
-            logger.warning(Fore.YELLOW + "Config file not found, creating a default one." + Fore.RESET)
+            logger.warning("[yellow]Config file not found, creating a default one.[/]")
             self.config = main_config_template
         else:
             try:
                 with open(config, "r") as f:
                     self.config = json.load(f)
             except Exception as e:
-                logger.exception(Fore.RED + f"Error loading config file: {e}" + Fore.RESET)
-                logger.warning(Fore.YELLOW + "Backing up and creating a default one." + Fore.RESET)
+                logger.exception(f"[red]Error loading config file: {e}[/]")
+                logger.warning("[yellow]Backing up and creating a default one.[/]")
                 os.rename(config, config + ".bak")
                 self.config = main_config_template
 

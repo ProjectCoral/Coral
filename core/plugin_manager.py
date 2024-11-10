@@ -2,7 +2,6 @@ import os
 import importlib.util
 import logging
 import asyncio
-from colorama import Fore
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ class PluginManager:
 
     async def load_all_plugins(self):
         if not os.path.exists(self.plugin_dir):
-            logger.warning(Fore.YELLOW + f"Plugin directory {self.plugin_dir} does not exist, skipping plugin loading" + Fore.RESET)
+            logger.warning(f"[yellow]Plugin directory {self.plugin_dir} does not exist, skipping plugin loading...[/]")
         else:
             logger.info(f"Loading plugins from {self.plugin_dir}")
             load_tasks = [self.load_plugin(plugin_name) for plugin_name in os.listdir(self.plugin_dir)]
@@ -44,9 +43,9 @@ class PluginManager:
         requirements_file = os.path.join(plugin_path,'requirements.txt')
         if os.path.exists(requirements_file):
             if not os.path.exists(requirements_file + ".coral_installed") and not await self.register.execute_function("check_pip_requirements", requirements_file):
-                logger.warning(Fore.YELLOW + "Plugin " + Fore.RESET + str(plugin_name) + Fore.YELLOW + " has unmet requirements, trying to install them" + Fore.RESET)
+                logger.warning("[yellow]Plugin [/]" + str(plugin_name) + "[yellow] has unmet requirements, trying to install them...[/]")
                 if not await self.register.execute_function("install_pip_requirements", requirements_file):
-                    logger.error(Fore.RED + "Failed to install requirements for plugin " + Fore.RESET + str(plugin_name) + Fore.RED + " , skipping" + Fore.RESET)
+                    logger.error("[red]Failed to install requirements for plugin [/]" + str(plugin_name) + "[red] , skipping...[/]")
                     return None
 
         try:
@@ -54,28 +53,28 @@ class PluginManager:
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
         except Exception as e:
-            logger.exception(Fore.RED + f"During plugin loading, an error occurred: {e}" + Fore.RESET)
-            logger.error(Fore.RED + "Failed to load plugin " + Fore.RESET + str(plugin_name) + Fore.RED + " , skipping" + Fore.RESET)
+            logger.exception(f"[red]During plugin loading, an error occurred: {e}[/]")
+            logger.error("[red]Failed to load plugin [/]" + str(plugin_name) + "[red] , skipping...[/]")
             if os.path.exists(requirements_file + ".coral_installed"):
                 os.remove(requirements_file + ".coral_installed")
             return None
 
         if hasattr(module, 'check_conpatibility'):
             if not module.check_conpatibility(self.pluginmanager_version):
-                logger.error(Fore.RED + "Plugin " + Fore.RESET + str(plugin_name) + Fore.RED + " is not compatible with this version of the Plugin Manager, skipping" + Fore.RESET)
+                logger.error("[red]Plugin [/]" + str(plugin_name) + "[red] is not compatible with this version of the Plugin Manager, skipping...[/]")
                 return None
         else:
-            logger.warning(Fore.YELLOW + "Plugin " + Fore.RESET + str(plugin_name) + Fore.YELLOW + " did not provide a compatibility check, which is deprecated and might be broken in a future version" + Fore.RESET)
+            logger.warning("[yellow]Plugin [/]" + str(plugin_name) + "[yellow] did not provide a compatibility check, which is deprecated and might be broken in a future version.[/]")
         self.plugins.append(plugin_name)
         if hasattr(module, 'register_plugin'):
             try:
                 module.register_plugin(self.register, self.config, self.perm_system)
             except Exception as e:
-                logger.exception(Fore.RED + f"During plugin registration, an error occurred: {e}" + Fore.RESET)
-                logger.error(Fore.RED + "Failed to register plugin " + Fore.RESET + str(plugin_name) + Fore.RED + " , skipping" + Fore.RESET)
+                logger.exception(f"[red]During plugin registration, an error occurred: {e}[/]")
+                logger.error("[red]Failed to register plugin [/]" + str(plugin_name) + "[red] , skipping...[/]")
                 return None
         else:
-            logger.warning(Fore.YELLOW + "Plugin " + Fore.RESET + str(plugin_name) + Fore.YELLOW + " did not provide a register function, will not do anything" + Fore.RESET)
+            logger.warning("[yellow]Plugin [/]" + str(plugin_name) + "[yellow] did not provide a register function, will not do anything.[/]")
 
     def show_plugins(self, *args):
         return  "Available plugins:\n" + str(self.plugins) + "\n Running Plugin Manager Version " + self.pluginmanager_version + "\n"

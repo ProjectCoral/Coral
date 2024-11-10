@@ -31,6 +31,13 @@ class ChatCommand:
         args = parts[1].strip() if len(parts) > 1 else ""
 
         try:
+            if command == "stop":
+                if 'ws_send' in self.register.functions:
+                    await self.register.execute_function('ws_send', {"message": "Stopping Coral...", "sender_user_id": sender_user_id, "group_id": group_id})
+        except Exception as e:
+            pass
+
+        try:
             send_message = self.register.execute_command(command, sender_user_id, group_id, args)
             logger.debug(f"Command {command} executed with args {args} and returned {send_message}")
         except Exception as e:

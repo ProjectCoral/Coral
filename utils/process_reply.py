@@ -3,7 +3,6 @@ import json
 import re
 import random
 import logging
-from colorama import Fore
 
 logger = logging.getLogger(__name__)
 
@@ -17,32 +16,32 @@ class ProcessReply:
 
     def define_functions(self):
         if 'process_text' not in self.register.functions:
-            logger.warning(Fore.YELLOW + 'process_text function is not registered, process text will not be working.' + Fore.RESET)
+            logger.warning('[yellow]process_text function is not registered, process text will not be working.[/]')
             self.process_text = None
         else:
             self.process_text = "Callable"
         if 'process_image' not in self.register.functions:
-            logger.warning(Fore.YELLOW + 'process_image function is not registered, process image will not be working.' + Fore.RESET)
+            logger.warning('[yellow]process_image function is not registered, process image will not be working.[/]')
             self.process_image = None
         else:
             self.process_image = "Callable"
         if 'process_video' not in self.register.functions:
-            logger.warning(Fore.YELLOW + 'process_video function is not registered, process video will not be working.' + Fore.RESET)
+            logger.warning('[yellow]process_voice function is not registered, process voice will not be working.[/]')
             self.process_video = None
         else:
             self.process_video = "Callable"
         if 'process_audio' not in self.register.functions:
-            logger.warning(Fore.YELLOW + 'process_audio function is not registered, process audio will not be working.' + Fore.RESET)
+            logger.warning('[yellow]process_audio function is not registered, process audio will not be working.[/]')
             self.process_audio = None
         else:
             self.process_audio = "Callable"
         if 'search_memory' not in self.register.functions:
-            logger.warning(Fore.YELLOW +'search_memory function is not registered, search memory will not be working.' + Fore.RESET)
+            logger.warning('[yellow]search_memory function is not registered, memory search will not be working.[/]')
             self.search_memory = None
         else:
             self.search_memory = "Callable"
         if 'store_memory' not in self.register.functions:
-            logger.warning(Fore.YELLOW +'store_memory function is not registered, store memory will not be working.' + Fore.RESET)
+            logger.warning('[yellow]store_memory function is not registered, memory store will not be working.[/]')
             self.store_memory = None
         else:
             self.store_memory = "Callable"
@@ -86,7 +85,7 @@ class ProcessReply:
         elif self.process_text:
             send_message = await self.register.execute_function('process_text', {"message": processed_message, "memory": memory, "sender_user_id": sender_user_id, "group_id": group_id})
         else:
-            logger.warning(Fore.YELLOW + 'No process function is registered, message will not be processed.' + Fore.RESET)
+            logger.warning('[yellow]No process function is registered, message will not be processed.[/]')
             return None
         
         if send_message['message'] is None:

@@ -3,9 +3,19 @@ import sys
 import subprocess
 import logging
 import shutil
-from colorama import Fore
+import datetime
+from rich.logging import RichHandler
+from rich.traceback import install
 
-logging.basicConfig(level=logging.INFO, format="[%(asctime)s] [%(levelname)s:%(name)s] %(message)s", datefmt="%H:%M:%S")
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+
+install(show_locals=True, max_frames=5)
+logging.basicConfig(level=logging.INFO, 
+                    format="%(message)s", 
+                    datefmt="[%H:%M:%S]",
+                    handlers=[logging.FileHandler(f"./logs/Coral_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log", encoding='utf-8'),
+                              RichHandler(rich_tracebacks=True, markup=True, omit_repeated_times=False)])
 
 if not os.path.exists('config.json'):
     logging.info("Checking requirements, this may take a while...")
@@ -17,7 +27,7 @@ if not os.path.exists('config.json'):
         try:
             subprocess.check_call([sys.executable, '-m', 'pip', 'show', line.strip()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError as e:
-            logging.critical(Fore.RED + "Failed to check requirement: {}".format(line.strip()) + Fore.RESET)
+            logging.critical("[[bold red blink]]Failed to check requirement: {}[/]".format(line.strip()))
             logging.error("Did you install it?\U0001F605")
             sys.exit(1)
 
@@ -34,14 +44,18 @@ if not os.path.exists('config.json'):
         title="Coral EULA", text=coral_eula
     ).run()
         if not result:
-            logging.critical("You must agree to the EULA to use Coral.")
+            logging.critical("[bold red blink]You must agree to the EULA to use Coral.[/]")
             sys.exit(1)
     except Exception as e:
-        logging.warning("Your device may not support prompt_toolkit dialog.")
-        print(coral_eula)
+        logging.warning("[yellow]Your device may not support prompt_toolkit dialog.[/]")
+        from rich.console import Console
+        from rich.markdown import Markdown
+        console = Console()
+        md = Markdown(coral_eula)
+        console.print(md)
         result = input("Do you agree to the Coral EULA? (y/n): ")
         if result.lower() not in ['y', 'yes']:
-            logging.critical("You must agree to the EULA to use Coral.")
+            logging.critical("[bold red blink]You must agree to the EULA to use Coral.[/]")
             sys.exit(1)
 
 logging.info("Cleaning up __pycache__ directories...")
@@ -54,11 +68,11 @@ for root, dirs, files in os.walk('./'):
       
 
 if __name__ == '__main__':
-    logging.info("Starting Coral...")
+    logging.info("[green]Starting Coral...[/]")
     try:
         from Coral import Coral
         Coral()
     except Exception as e:
-        logging.exception(Fore.RED + "An error occurred: {}".format(str(e)) + Fore.RESET)
-        logging.critical("Oops, Coral has crashed.\U0001F605 Please check the logs for more information.")
+        logging.exception("[red]An error occurred: {}[/]".format(str(e)))
+        logging.critical("[bold red blink]Oops, Coral has crashed.\U0001F605 Please check the logs for more information.[/]")
         os._exit(1)

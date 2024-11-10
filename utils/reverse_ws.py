@@ -3,7 +3,6 @@ import json
 import uvicorn
 import logging
 import asyncio
-from colorama import Fore
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketState
@@ -128,13 +127,14 @@ class ReverseWS:
                         await websocket.send_text(reply_json)
 
             except json.JSONDecodeError:
-                logger.error(Fore.RED + "JSONDecodeError" + Fore.RESET)
+                logger.error("[red]JSONDecodeError[/]")
             except WebSocketDisconnect:
                 logger.info("WebSocket disconnected")
                 self.WebsocketPort_instance.connected = False
                 if 'client_disconnected' in self.register.event_queues:
                     await self.register.execute_event('client_disconnected')
             except Exception as e:
+                logger.exception(f"[red]WebSocket error: {e}[/]")
                 raise e
 
     def process_data(self, data):
@@ -150,7 +150,7 @@ class ReverseWS:
             
             if 'status' in data:
                 if data['status'] != 'ok':
-                    logger.error(f"发送/接收数据错误：{data['status']}")
+                    logger.error(f"发送/接收数据错误： {data['status']}")
                 return None
             
             elif 'post_type' in data and data['post_type'] == 'message':
@@ -158,19 +158,20 @@ class ReverseWS:
                 raw_message = data['raw_message']
                 if data['message_type'] == 'private':
                     group_id = -1
-                    logger.info(f"私聊消息：{raw_message}，来自{sender_user_id}")
+                    logger.info(f"私聊消息： {raw_message} ，来自 {sender_user_id} ")
                 elif data['message_type'] == 'group':
                     group_id = data.get('group_id')
-                    logger.info(f"群聊消息：{raw_message}，来自{sender_user_id}，群号{group_id}")
+                    logger.info(f"群聊消息： {raw_message} ，来自 {sender_user_id} ，群号 {group_id} ")
                 else:
-                    logger.warning(f"未知消息类型：{data['message_type']}")
+                    logger.warning(f"未知消息类型： {data['message_type']}")
                     return None
                 return {"message": raw_message,"sender_user_id": sender_user_id, "group_id": group_id}
             
             else:
-                logger.warning(f"未知数据类型：{data}")
+                logger.warning(f"未知数据类型： {data}")
                 return None
         except Exception as e:
+            logger.exception(f"[red]数据处理错误: {e}[/]")
             raise e
 
     def start(self):

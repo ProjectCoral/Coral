@@ -46,7 +46,11 @@ class Register:
 
     async def execute_function(self, function_name, *args, **kwargs):
         if function_name in self.functions:
-            result = await self.functions[function_name](*args, **kwargs)
+            try:    
+                result = await self.functions[function_name](*args, **kwargs)
+            except Exception as e:
+                logger.exception(f"[red]Error executing function {function_name}: {e}[/]")
+                raise e
             return result
         raise ValueError(f"Function {function_name} not found, probably you forget register it")
 
@@ -56,9 +60,17 @@ class Register:
                 return "You don't have permission to execute this command"
         if command_name in self.commands:
             if data is None:
-                return self.commands[command_name]()
+                try:
+                    return self.commands[command_name]()
+                except Exception as e:
+                    logger.exception(f"[red]Error executing command {command_name}: {e}[/]")
+                    raise e
             logger.debug(f"Executing command {command_name} with data {data}")
-            return self.commands[command_name](data)
+            try:
+                return self.commands[command_name](data)
+            except Exception as e:
+                logger.exception(f"[red]Error executing command {command_name}: {e}[/]")
+                raise e
         return self.no_command()
     
     def no_command(self):
@@ -75,7 +87,11 @@ class Register:
         ori_args = args
         for event_name, func, priority in self.event_queues[event]:
             logger.debug(f"Executing event {event_name} with args {args}")
-            result = await func(*args)
+            try:
+                result = await func(*args)
+            except Exception as e:
+                logger.exception(f"[red]Error executing event {event_name}: {e}[/]")
+                raise e
             if result is not None:
                 if isinstance(result, tuple) and len(result) == 4:
                     result_args, change_args, interrupt, new_priority = result
