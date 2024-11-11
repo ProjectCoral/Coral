@@ -38,7 +38,7 @@ class Coral:
         self.perm_system = PermSystem(self.register, self.config)
         self.plugin_manager = PluginManager(self.register, self.config, self.perm_system)
 
-        self.config.set("coral_version", "241109_early_developement")
+        self.config.set("coral_version", "241110_early_developement")
 
         self.register_buildin_plugins()
 
@@ -51,11 +51,11 @@ class Coral:
         
         end_time = time.time()
 
-        logger.info(Fore.GREEN + f"Coral initialized in {end_time - start_time:.2f} seconds." + Fore.RESET)
+        logger.info(f"[green]Coral initialized in {end_time - start_time:.2f} seconds.[/]")
 
         last_init_time = self.config.get("last_init_time", end_time - start_time)
         if end_time - start_time < last_init_time:
-            logger.info(Fore.CYAN + f"Coral initialize boosted\U0001F680 by {last_init_time - end_time + start_time:.2f} seconds." + Fore.RESET)
+            logger.info(f"[cyan]Coral initialize boosted\U0001F680 by {last_init_time - end_time + start_time:.2f} seconds.[/]")
         self.config.set("last_init_time", end_time - start_time)
 
         logger.info("All things works fine\U0001F60B, starting client...")
@@ -78,8 +78,8 @@ class Coral:
                 try:
                     im_text = AutoPrompt.prompt()
                 except Exception:
-                    logger.error(Fore.RED + "Error in AutoPrompt, console input will not be available." + Fore.RESET)
-                    logger.warning(Fore.YELLOW + "After disabled input, some unexpected errors may occur." + Fore.RESET)  
+                    logger.error("[red]Error in AutoPrompt, console input will not be available.[/]")
+                    logger.warning("[yellow]After disabled input, some unexpected errors may occur.[/]")  
                     disabled_console = True
                     break
                 try:
@@ -91,13 +91,13 @@ class Coral:
                     response = self.register.execute_command(command, "Console", -1, *args)
                     print(response)
                 except Exception as e:
-                    logger.exception(Fore.RED + f"Error executing command: {e}" + Fore.RESET)
-                    logger.warning(Fore.YELLOW + f"You can continue to use Console, but we recommand you to check your command or plugin." + Fore.RESET)  
+                    logger.exception(f"[red]Error executing command: {e}[/]")
+                    logger.warning(f"[yellow]You can continue to use Console, but we recommand you to check your command or plugin.[/]")  
                     continue                  
         except KeyboardInterrupt:
             self.stopping()
         except Exception as e:
-            logger.exception(Fore.RED + f"Unknown error occured: {e}" + Fore.RESET)
+            logger.exception(f"[red]Unknown error occured: {e}[/]")
             logger.exception("This error should not happen.\U0001F630")
             logger.error("Coral will be stopped.")
             self.stopping()
@@ -110,7 +110,7 @@ class Coral:
                 except KeyboardInterrupt:
                     self.stopping()
         except Exception as e:
-            logger.exception(Fore.RED + f"Unknown error occured: {e}" + Fore.RESET)
+            logger.exception(f"[red]Unknown error occured: {e}[/]")
             logger.critical("This error should not happen.\U0001F630")
             logger.error("Coral will be stopped.")
             self.stopping()
@@ -129,6 +129,6 @@ class Coral:
             except KeyboardInterrupt:
                 break
             except Exception as e:
-                logger.exception(Fore.RED + f"Error in WebSocket Server: {e}" + Fore.RESET)
+                logger.exception(f"[red]Error in WebSocket Server: {e}[/]")
                 time.sleep(3)
-                logger.warning(Fore.YELLOW + "Restarting WebSocket Server..." + Fore.RESET)
+                logger.warning("[yellow]Restarting WebSocket Server...[/]")

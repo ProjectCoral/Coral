@@ -3,7 +3,7 @@ import subprocess
 import sys
 import logging
 import re
-from colorama import Fore
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn
 
 logger = logging.getLogger(__name__)
 
@@ -16,22 +16,35 @@ class InstallRequirements:
 
     def __init__(self, config):
         self.config = config
+        self.progress = Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TimeRemainingColumn(),
+            transient=True,
+        )
         
     async def install_pip_requirements(self, requirements_file):
         if not os.path.exists(requirements_file):
-            logger.error(Fore.RED + "Requirements file not found: {}".format(requirements_file) + Fore.RESET)
+            logger.error("[red]Requirements file not found: {}[/]".format(requirements_file))
             return False
-        index_url = self.config.get('index_url', 'https://pypi.tuna.tsinghua.edu.cn/simple')
-        try:
-            subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-i', index_url, '-r', requirements_file], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except subprocess.CalledProcessError as e:
-            logger.error(Fore.RED + "Failed to install requirements: {}".format(e) + Fore.RESET)
-            return False
-        return True
+        task = self.progress.add_task("[green]Installing plugin requirements...", total=None)
+        with self.progress:
+            index_url = self.config.get('index_url', 'https://pypi.tuna.tsinghua.edu.cn/simple')
+            try:
+                subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-i', index_url, '-r', requirements_file], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except subprocess.CalledProcessError as e:
+                logger.error("[red]Failed to install requirements: {}[/]".format(e))
+                self.progress.stop()
+                return False
+            self.progress.update(task)
+            self.progress.stop()
+            return True
     
     async def check_pip_requirements(self, requirements_file):
         if not os.path.exists(requirements_file):
-            logger.error(Fore.RED + "Requirements file not found: {}".format(requirements_file) + Fore.RESET)
+            logger.error("[red]Requirements file not found: {}[/]".format(requirements_file))
             return False
         
         if os.path.exists(requirements_file + ".coral_installed"):
@@ -40,18 +53,24 @@ class InstallRequirements:
         with open(requirements_file, 'r') as f:
             lines = f.readlines()
         
-        for line in lines:
-            if line.startswith('#') or line.strip() == '':
-                continue
-            
-            # 解析包名
-            package_name = re.split('>=|>|<=|<|==|!=', line.strip())[0].strip()
-            
-            try:
-                subprocess.check_call([sys.executable, '-m', 'pip', 'show', package_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            except subprocess.CalledProcessError as e:
-                logger.error(Fore.RED + "Failed to check requirement: {}".format(line.strip()) + Fore.RESET)
-                return False
+        task = self.progress.add_task("[green]Checking plugin requirements...", total=len(lines))
+
+        with self.progress:
+            for line in lines:
+                if line.startswith('#') or line.strip() == '':
+                    continue
+                
+                # 解析包名
+                package_name = re.split('>=|>|<=|<|==|!=', line.strip())[0].strip()
+                
+                try:
+                    subprocess.check_call([sys.executable, '-m', 'pip', 'show', package_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except subprocess.CalledProcessError as e:
+                    logger.error("[red]Failed to check requirement: {}[/]".format(line.strip()))
+                    self.progress.stop()
+                    return False
+                self.progress.update(task, advance=1)
+        self.progress.stop()
         
         with open(requirements_file + ".coral_installed", 'w') as f:
             f.write("Installed")

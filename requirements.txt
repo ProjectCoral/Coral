@@ -6,3 +6,4 @@ sentencepiece
 pyfiglet
 colorama
 prompt_toolkit
+rich
