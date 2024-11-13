@@ -1,4 +1,6 @@
 import os
+import sys
+import time
 import importlib.util
 import logging
 import asyncio
@@ -14,7 +16,7 @@ class PluginManager:
         self.config = config
         self.perm_system = perm_system
         self.plugin_dir = self.config.get("plugin_dir", "./plugins")
-        self.config.set("pluginmanager_version", "241108_early_developement")
+        self.config.set("pluginmanager_version", "241113_early_developement")
         self.pluginmanager_version = self.config.get("pluginmanager_version")
         self.register = register
         self.plugins = []
@@ -30,7 +32,8 @@ class PluginManager:
         self.perm_system.register_perm("pluginmanager", "Base Permission")
         self.perm_system.register_perm("pluginmanager.show_plugins", "Permission to show available plugins")
         self.register.register_command("plugins", "List all available plugins", self.show_plugins, ["pluginmanager", "pluginmanager.show_plugins"])
-        logger.info(f"Loaded {len(self.plugins)} plugins")
+        self.register.register_command("reload", "Reload all plugins", self.reload_command, ["pluginmanager"])
+        logger.info(f"Loaded {len(self.plugins)} plugins.")
 
     async def load_plugin(self, plugin_name):
         plugin_path = os.path.join(self.plugin_dir, plugin_name)
@@ -49,7 +52,7 @@ class PluginManager:
                     return None
 
         try:
-            spec = importlib.util.spec_from_file_location("main", main_file)
+            spec = importlib.util.spec_from_file_location(f"plugins.{plugin_name}", main_file)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
         except Exception as e:
@@ -78,3 +81,55 @@ class PluginManager:
 
     def show_plugins(self, *args):
         return  "Available plugins:\n" + str(self.plugins) + "\n Running Plugin Manager Version " + self.pluginmanager_version + "\n"
+    
+    async def reload_plugins(self):
+        if not os.path.exists(self.plugin_dir):
+            logger.warning(f"[yellow]Plugin directory {self.plugin_dir} does not exist, skipping plugin reloading...[/]")
+        else:
+            self.plugins = []
+            await self.register.core_reload()
+            logger.info(f"Reloading plugins from {self.plugin_dir}")
+            reload_tasks = [self.load_plugin(plugin_name) for plugin_name in os.listdir(self.plugin_dir)]
+            await asyncio.gather(*reload_tasks)
+        self.perm_system.register_perm("pluginmanager", "Base Permission")
+        self.perm_system.register_perm("pluginmanager.show_plugins", "Permission to show available plugins")
+        self.register.register_command("plugins", "List all available plugins", self.show_plugins, ["pluginmanager", "pluginmanager.show_plugins"])
+        self.register.register_command("reload", "Reload all plugins", self.reload_command, ["pluginmanager"])
+        logger.info(f"Reloaded {len(self.plugins)} plugins.")
+            
+        
+    def reload_command(self, *args, **kwargs):
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        start_time = time.time()
+        task = loop.create_task(self.reload_plugins())
+        loop.run_until_complete(task)
+        end_time = time.time()
+        return f"Reloaded in {end_time - start_time:.2f} s"
+
+    async def reload_plugin(self, plugin_name):
+        plugin_path = os.path.join(self.plugin_dir, plugin_name)
+        if not os.path.isdir(plugin_path):
+            return None
+        main_file = os.path.join(plugin_path, 'main.py')
+        if not os.path.exists(main_file):
+            return None
+        
+        try:
+            if f"plugins.{plugin_name}" in sys.modules:
+                importlib.reload(sys.modules[f"plugins.{plugin_name}"])
+            else:
+                await self.load_plugin(plugin_name)
+        except ModuleNotFoundError:
+            try:
+                await self.load_plugin(plugin_name)
+            except:
+                return None
+        except Exception as e:
+            logger.exception(f"[red]During plugin reloading, an error occurred: {e}[/]")
+            logger.error("[red]Failed to reload plugin [/]" + str(plugin_name) + "[red] , skipping...[/]")
+            return None
+

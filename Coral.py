@@ -37,8 +37,9 @@ class Coral:
         self.register = Register()
         self.perm_system = PermSystem(self.register, self.config)
         self.plugin_manager = PluginManager(self.register, self.config, self.perm_system)
+        self.register.load_buildin_plugins = self.register_buildin_plugins
 
-        self.config.set("coral_version", "241110_early_developement")
+        self.config.set("coral_version", "241113_early_developement")
 
         self.register_buildin_plugins()
 
@@ -69,6 +70,7 @@ class Coral:
         self.plugin_manager.plugins.append("chat_command")
         utils.chat_command.register_plugin(self.register, self.config, self.perm_system)
         self.register.register_command("stop", "Stop Coral", self.stopping, "ALL")
+        logger.info("Buildin plugins Loaded.")
 
     def run(self):
         time.sleep(3) # 等待适配器加载完成

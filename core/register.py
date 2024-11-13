@@ -10,6 +10,7 @@ class Register:
         self.command_descriptions = {}
         self.command_permissions = {}
         self.functions = {}
+        self.load_buildin_plugins = None
         self.default_events = ["coral_initialized", "coral_shutdown", "client_connected", "client_disconnected", "prepare_reply", "finish_reply"]
 
     def hook_perm_system(self, perm_system):
@@ -111,4 +112,17 @@ class Register:
             return args[0]
         return args
 
- 
+    async def core_reload(self):
+        for event_queue in self.event_queues.values():
+            event_queue.clear()
+        self.commands.clear()
+        self.command_descriptions.clear()
+        self.command_permissions.clear()
+        self.functions.clear()
+        logger.info("All events, commands, functions and permissions have been unloaded.")
+        if self.load_buildin_plugins is not None:
+            self.load_buildin_plugins()
+        self.perm_system.save_user_perms()
+        self.perm_system.registered_perms = {}
+        self.perm_system.load_user_perms()
+        logger.info("Coral Core has been reloaded.")
