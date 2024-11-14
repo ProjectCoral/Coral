@@ -108,6 +108,7 @@ class PluginManager:
         task = loop.create_task(self.reload_plugins())
         loop.run_until_complete(task)
         end_time = time.time()
+        logger.warning(f"[yellow]It's not recommended to reload frequently, as it can cause issues. Please use the reload command only when necessary.[/]")
         return f"Reloaded in {end_time - start_time:.2f} s"
 
     async def reload_plugin(self, plugin_name):

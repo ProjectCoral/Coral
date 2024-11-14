@@ -39,7 +39,7 @@ class Coral:
         self.plugin_manager = PluginManager(self.register, self.config, self.perm_system)
         self.register.load_buildin_plugins = self.register_buildin_plugins
 
-        self.config.set("coral_version", "241113_early_developement")
+        self.config.set("coral_version", "241114_early_developement")
 
         self.register_buildin_plugins()
 

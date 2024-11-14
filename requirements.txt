@@ -2,7 +2,6 @@ fastapi
 requests
 uvicorn
 apscheduler
-sentencepiece
 pyfiglet
 colorama
 prompt_toolkit
