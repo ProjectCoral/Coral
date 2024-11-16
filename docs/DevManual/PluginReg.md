@@ -4,6 +4,8 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
 
 无论哪种，都需要在 `main.py` 中调用 `register` 类的方法，并传入相应的参数。
 
+> 在11月的更新中，新增了对修饰器的支持，可以更方便地注册命令。
+
 ## 注册命令
 
 命令是指在操作台中，用户输入特定的命令时，插件可以执行一些操作。
@@ -11,10 +13,11 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
 1. 编写命令逻辑：
 
     在 `main.py` 中，定义一个函数/类，该函数会在用户输入命令时被调用。
-    
+
     **注意**: 需要打印/传递的信息必须以 `return` 语句的形式返回。
 
     示例函数：
+
     ```python
     def sayhello(self, args):
         return f"Hello, {args}!"
@@ -23,6 +26,7 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
     你也可以定义一个类，此时可以传递 Coral 的 `register` 和 `config` 类，这样可以调用其他行为\获取全局配置。
 
     示例类：
+
     ```python
     class TestCommand:
         register = None
@@ -54,6 +58,10 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
         register.register_command("howmanycommands", "How many commands are registered", TestCommand(register, config).howmanycommands)
 
         register.register_command("fetch_bot_id", "Fetch bot id", TestCommand(register, config).fetch_bot_id)
+
+        @register.future.register_command("sayhi", "Say hi to someone")
+        async def sayhi(*args):
+            return sayhello(*args)
     ```
 
 3. 调用命令：
@@ -91,10 +99,11 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
     - 是否处理过信息(`True` / `False`)
     - 是否继续执行后续插件(`True` / `False`)
     - 中断后更改事件优先级(数字越小，优先级越高)
-    
+
         关于优先级，数字越小，优先级越高， Coral 定义的事件优先级为 1，你可以根据自己的需求设置优先级为0/1/2...(**不建议，除非你知道你在做什么**)。
-    
+
     示例函数：
+
     ```python
     async def on_message(self, message):
         logging.info(f"Received message: {message['message']}")
@@ -104,6 +113,7 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
     你也可以定义一个类，此时可以传递 Coral 的 `register` 和 `config` 类，这样可以调用其他行为\获取全局配置。
 
     示例类：
+
     ```python
     class TestEvent:
         register = None
@@ -141,6 +151,10 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
         register.register_event("prepare_reply", "Receivemessage",TestEvent(register, config).on_message, 1)
 
         register.register_event("client_connected", "Clientconnected", TestEvent(register, config).connected, 1)
+
+        @register.future.register_event("client_disconnected", "Clientdisconnected", 1)
+        async def client_disconnected():
+            return func()
     ```
 
 ## 注册函数
@@ -156,6 +170,7 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
     **注意**: 函数名称必须唯一，否则会覆盖已注册的函数。
 
     示例函数：
+
     ```python
     async def on_function_call(self, func_name, args):
         logging.info(f"Function {func_name} called with args: {args}")
@@ -163,6 +178,7 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
     ```
 
     示例类：
+
     ```python
     class TestFunction:
         register = None
@@ -186,6 +202,10 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
         register.register_function("on_function_call", on_function_call)
 
         register.register_function("on_function_call", TestFunction(register, config).on_function_call)
+
+        @register.future.register_function("test_func", 1)
+        async def test_func(*args):
+            return func(*args)
     ```
 
 3. 调用函数：
