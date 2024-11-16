@@ -89,7 +89,7 @@ class PermSystem:
         self.save_user_perms()
         return "Permission removed."
 
-    def check_perm(self, perm_name, user_id, group_id):
+    def check_perm(self, perm_name: str, user_id: int, group_id: int):
         if user_id == 'Console':
             return True
         if isinstance(perm_name, list):
@@ -97,7 +97,6 @@ class PermSystem:
                 if self.check_perm(p, user_id, group_id):
                     return True
             return False
-        perm_name = str(perm_name)
         logger.debug(f"Checking permission {perm_name} for user {user_id} in group {group_id}")
         if perm_name not in self.registered_perms:
             logger.warning(f"[yellow]Permission {perm_name} not registered, ingoring it.[/]")
@@ -120,7 +119,7 @@ class PermSystem:
         return False
 
     
-    def register_perm(self, perm_name, perm_desc):
+    def register_perm(self, perm_name: str, perm_desc: str):
         self.registered_perms[perm_name] = perm_desc
 
     def show_perms(self, *args):
