@@ -11,7 +11,7 @@ import utils.commands
 import utils.install_requirements
 import utils.chat_command
 from utils.auto_prompt import AutoPrompt
-from utils.reverse_ws import ReverseWS
+from libraries.reverse_ws import ReverseWS
 from utils.config import Config
 from utils.process_reply import ProcessReply
 
@@ -39,7 +39,7 @@ class Coral:
         self.plugin_manager = PluginManager(self.register, self.config, self.perm_system)
         self.register.load_buildin_plugins = self.register_buildin_plugins
 
-        self.config.set("coral_version", "241114_early_developement")
+        self.config.set("coral_version", "0.1.0.BETA")
 
         self.register_buildin_plugins()
 

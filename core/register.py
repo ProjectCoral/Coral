@@ -81,27 +81,30 @@ class Register:
     def get_command_description(self, command_name: str):
         return self.command_descriptions.get(command_name, "No description found")
 
-    async def execute_event(self, event: str, *args):
+    async def execute_event(self, event: str, *args) -> list:
         interrupted = False
         change_priority = None
         if event not in self.event_queues:
             raise ValueError(f"Event {event} not found, probably you forget register it")
-        ori_args = args
-        args_changed = False
+        result_buffer = []
         for event_name, func, priority in self.event_queues[event]:
             logger.debug(f"Executing event {event_name} with args {args}")
             try:
-                result = await func(*args)
+                result = await func([*args, result_buffer])
             except Exception as e:
                 logger.exception(f"[red]Error executing event {event_name}: {e}[/]")
                 raise e
             if result is not None:
-                if isinstance(result, tuple) and len(result) == 4:
-                    result_args, change_args, interrupt, new_priority = result
-                    logger.debug(f"Event {event_name} returns {result_args}, change args to {change_args}, interrupt: {interrupt}, new priority: {new_priority}")
-                    if change_args:
-                        args = (result_args,)
-                        args_changed = True
+                if isinstance(result, tuple) and len(result) == 3:
+                    result_args, interrupt, new_priority = result
+                    logger.debug(f"Event {event_name} returns {result_args}, interrupt: {interrupt}, new priority: {new_priority}")
+                    if isinstance(result_args, list):
+                        if isinstance(result_args[1], list):
+                            result_buffer = result_args[1]
+                        if result_args[0] is not None:
+                            result_buffer = result_buffer.append(result_args[0])
+                    elif result_args is not None:
+                        result_buffer.append(result_args)
                     if interrupt:
                         interrupted = True
                         change_priority = (event_name, func, new_priority)
@@ -110,13 +113,9 @@ class Register:
             # 如果有中断，则将中断的监听器移动到队列的最前面
             self.event_queues[event].remove(change_priority)
             self.event_queues[event].appendleft(change_priority)
-        if args == ori_args and not args_changed:
-            return None
-        if len(args) == 1 and isinstance(args[0], dict):
-            return args[0]
-        if len(args) == 1 and isinstance(args, tuple):
-            return args[0]
-        return args
+        if result_buffer:
+            return result_buffer
+        return []
 
     async def core_reload(self):
         for event_queue in self.event_queues.values():

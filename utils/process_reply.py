@@ -88,12 +88,14 @@ class ProcessReply:
             logger.warning('[yellow]No process function is registered, message will not be processed.[/]')
             return None
         
-        if send_message['message'] is None:
+        if send_message['action'] == 'send_msg' and send_message['message'] is None:
             return None
         await self.finish_reply(processed_message,send_message)
         return send_message
 
     async def finish_reply(self, message, send_message):
+        if send_message['action'] != 'send_msg':
+            return
         reply = send_message['message']
         sender_user_id = send_message['sender_user_id']
         group_id = send_message['group_id']

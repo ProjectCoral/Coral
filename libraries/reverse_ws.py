@@ -4,33 +4,12 @@ import uvicorn
 import logging
 import asyncio
 
+from .OnebotAdapter import OnebotAdapter
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketState
 from starlette.websockets import WebSocketDisconnect
 
 logger = logging.getLogger(__name__)
-
-def build_reply_json(reply_item, sender_user_id, group_id):
-    if reply_item is None:
-        return None
-    if group_id == -1:
-        data = {
-            "action": "send_private_msg",
-            "params": {
-                "user_id": sender_user_id,
-                "message": reply_item
-            }
-        }
-        return json.dumps(data, ensure_ascii=False)
-    else:
-        data = {
-            "action": "send_group_msg",
-            "params": {
-                "group_id": group_id,
-                "message": reply_item
-            }
-        }
-        return json.dumps(data, ensure_ascii=False)
 
 class ReverseWS:
     websocket_port = 21050
@@ -45,6 +24,7 @@ class ReverseWS:
         self.process_reply = process_reply
         self.receive_data_task = None 
         self.lock = asyncio.Lock()
+        self.adapter = OnebotAdapter()
 
         @self.app.websocket("/ws/api")
         async def websocket_endpoint(websocket: WebSocket):
@@ -95,16 +75,8 @@ class ReverseWS:
 
                     if 'prepare_reply' in self.register.event_queues:
                         prepared_result = await self.register.execute_event('prepare_reply', formatted_data)
-                        if prepared_result['message'] is not None:
-                            logger.info(f"回复{prepared_result['message']}")
-                            if isinstance(prepared_result['message'], list):
-                                for item in prepared_result['message']:
-                                    reply_json = build_reply_json(item, prepared_result['sender_user_id'], prepared_result['group_id'])
-                                    await websocket.send_text(reply_json)
-                            else:
-                                reply_json = build_reply_json(prepared_result['message'], prepared_result['sender_user_id'], prepared_result['group_id'])
-                                await websocket.send_text(reply_json)
-                            continue
+                        if prepared_result is not None and isinstance(prepared_result, list) and len(prepared_result) > 0:
+                                await self.build_reply(prepared_result, websocket)
                                             
                     result = await self.process_reply(formatted_data)
                     if result is None:
@@ -112,19 +84,8 @@ class ReverseWS:
                                     
                     if 'finish_reply' in self.register.event_queues:
                         await self.register.execute_event('finish_reply', result)
-                    reply_item = result['message']
-                    sender_user_id = result['sender_user_id']
-                    group_id = result['group_id']
 
-                    logger.info(f"回复{reply_item}")
-
-                    if isinstance(reply_item, list):
-                        for item in reply_item:
-                            reply_json = build_reply_json(item, sender_user_id, group_id)
-                            await websocket.send_text(reply_json)
-                    else:
-                        reply_json = build_reply_json(reply_item, sender_user_id, group_id)
-                        await websocket.send_text(reply_json)
+                    await self.build_reply(result, websocket)
 
             except json.JSONDecodeError:
                 logger.error("[red]JSONDecodeError[/]")
@@ -137,6 +98,45 @@ class ReverseWS:
                 logger.exception(f"[red]WebSocket error: {e}[/]")
                 raise e
 
+    async def build_reply(self, result_buffer, websocket):
+        if result_buffer is None:
+            return
+        
+        if isinstance(result_buffer, dict):
+            if result_buffer['action'] == 'send_msg':
+                message = result_buffer['message']
+                sender_user_id = result_buffer['sender_user_id']
+                group_id = result_buffer['group_id']
+                
+                logger.info(f"回复{str(message)}")
+
+                if isinstance(message, list):
+                    for item in message:
+                        if item is None:
+                            continue
+                        reply_json = self.adapter.build_onebot_message({"action": "send_msg", "message": item, "sender_user_id": sender_user_id, "group_id": group_id})
+                        await websocket.send_text(reply_json)
+                    return
+                else:
+                    if message is None:
+                        return
+                    reply_json = self.adapter.build_onebot_message({"action": "send_msg", "message": message, "sender_user_id": sender_user_id, "group_id": group_id})
+                    await websocket.send_text(reply_json)
+                return
+            else:
+                reply_json = self.adapter.build_onebot_message(result_buffer)
+                await websocket.send_text(reply_json)
+                return
+            
+        elif isinstance(result_buffer, list):
+            for item in result_buffer:
+                await self.build_reply(item, websocket)
+            return
+        
+        else:
+            logger.warning(f"Invalid result: {result_buffer}")
+            return
+        
     def process_data(self, data):
         try:
             data = json.loads(data)
@@ -198,8 +198,8 @@ class WebsocketPort:
             return None
         try:
             reply_item = result['message']
-            sender_user_id = result['sender_user_id']
-            group_id = result['group_id']
+            sender_user_id = int(result['sender_user_id'])
+            group_id = int(result['group_id'])
         except KeyError:
             logger.error("Invalid arguments.\n Usage: ws_send <{message:str|list, sender_user_id:int, group_id:int}>")
             return None
@@ -210,10 +210,10 @@ class WebsocketPort:
             self.ReverseWS_instance.lock = asyncio.Lock()
         if isinstance(reply_item, list):
             for item in reply_item:
-                reply_json = build_reply_json(item, sender_user_id, group_id)
+                reply_json = self.ReverseWS_instance.adapter.build_onebot_message({"action": "send_msg", "message": item, "sender_user_id": sender_user_id, "group_id": group_id})
                 await self.websocket.send_text(reply_json)
         else:
-            reply_json = build_reply_json(reply_item, sender_user_id, group_id)
+            reply_json = self.ReverseWS_instance.adapter.build_onebot_message({"action": "send_msg", "message": reply_item, "sender_user_id": sender_user_id, "group_id": group_id})
             await self.websocket.send_text(reply_json)
         logger.info("已发送")
 
