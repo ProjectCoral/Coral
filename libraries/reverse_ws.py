@@ -77,6 +77,7 @@ class ReverseWS:
                         prepared_result = await self.register.execute_event('prepare_reply', formatted_data)
                         if prepared_result is not None and isinstance(prepared_result, list) and len(prepared_result) > 0:
                                 await self.build_reply(prepared_result, websocket)
+                                continue
                                             
                     result = await self.process_reply(formatted_data)
                     if result is None:

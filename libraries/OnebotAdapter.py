@@ -421,12 +421,6 @@ class OnebotAdapter:
         }
         return json.dumps(data, ensure_ascii=False)
     
-    def get_csrf_token_to_onebot(self, coral_message):
-        data = {
-            "action": "get_csrf_token"
-        }
-        return json.dumps(data, ensure_ascii=False)
-    
     def get_credentials_to_onebot(self, coral_message):
         domain = coral_message["domain"] if "domain" in coral_message else ""
         data = {
