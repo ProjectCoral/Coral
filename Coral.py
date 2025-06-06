@@ -12,14 +12,21 @@ import utils.install_requirements
 import utils.chat_command
 from utils.auto_prompt import AutoPrompt
 from libraries.reverse_ws import ReverseWS
-from utils.config import Config
+from core.config import Config
 from utils.process_reply import ProcessReply
 
 from core.register import Register
 from core.plugin_manager import PluginManager
 from core.perm_system import PermSystem
+from core.process_worker import ProcessWorker
 
 logger = logging.getLogger(__name__)
+
+plugin_dir = "./plugins"
+config_file = "./config.json"
+config = Config(config_file)
+register = Register()
+perm_system = PermSystem(register, config)
 
 class Coral:
     def __init__(self):
@@ -31,15 +38,13 @@ class Coral:
     async def initialize(self):
         start_time = time.time()
 
-        plugin_dir = "./plugins"
-        config_file = "./config.json"
-        self.config = Config(config_file)
-        self.register = Register()
-        self.perm_system = PermSystem(self.register, self.config)
+        self.config = config
+        self.register = register
+        self.perm_system = perm_system
         self.plugin_manager = PluginManager(self.register, self.config, self.perm_system)
         self.register.load_buildin_plugins = self.register_buildin_plugins
 
-        self.config.set("coral_version", "0.1.0.BETA")
+        self.config.set("coral_version", "250606_early_development")
 
         self.register_buildin_plugins()
 
@@ -60,7 +65,8 @@ class Coral:
         self.config.set("last_init_time", end_time - start_time)
 
         logger.info("All things works fine\U0001F60B, starting client...")
-        threading.Thread(target=self.ws_thread, args=(self.config,self.register,self.process_reply.process_message),).start()
+        threading.Thread(target=self.ws_thread, args=(self.config,self.register,self.process_reply.process_message), daemon=True,).start()
+        # ProcessWorker(target=self.ws_thread, args=(self.config,self.register,self.process_reply.process_message)).run()
 
     def register_buildin_plugins(self):
         self.plugin_manager.plugins.append("base_commands")
@@ -94,7 +100,7 @@ class Coral:
                     print(response)
                 except Exception as e:
                     logger.exception(f"[red]Error executing command: {e}[/]")
-                    logger.warning(f"[yellow]You can continue to use Console, but we recommand you to check your command or plugin.[/]")  
+                    logger.warning("[yellow]You can continue to use Console, but we recommand you to check your command or plugin.[/]")  
                     continue                  
         except KeyboardInterrupt:
             self.stopping()

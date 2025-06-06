@@ -4,7 +4,9 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
 
 无论哪种，都需要在 `main.py` 中调用 `register` 类的方法，并传入相应的参数。
 
-> 在11月的更新中，新增了对修饰器的支持，可以更方便地注册命令。
+> 在24/11月的更新中，新增了对修饰器的支持，可以更方便地注册命令。
+
+> 在25/6月的更新中，重构了注册逻辑，现在注册可以直接调用。
 
 返回的数据格式或是 API 请求数据请参考 [API 文档](api.md)。
 
@@ -48,22 +50,23 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
 
 2. 注册命令：
 
-    在 `main.py` 中，添加 `register_plugin` 函数，并传入命令名称、命令描述、命令执行函数。
+    在 `main.py` 中，导入 `register` 类，并调用 `register_command` 方法，传入命令名称、命令描述、命令执行函数。
 
 
     **注意**: 命令名称必须唯一，否则会覆盖已注册的命令。
 
     ```python
-    def register_plugin(register, config, perm_system):
-        register.register_command("sayhello", "Say hello to someone", sayhello)
+    from Coral import register, config
 
-        register.register_command("howmanycommands", "How many commands are registered", TestCommand(register, config).howmanycommands)
+    register.register_command("sayhello", "Say hello to someone", sayhello)
 
-        register.register_command("fetch_bot_id", "Fetch bot id", TestCommand(register, config).fetch_bot_id)
+    register.register_command("howmanycommands", "How many commands are registered", TestCommand(register, config).howmanycommands)
 
-        @register.future.register_command("sayhi", "Say hi to someone")
-        async def sayhi(*args):
-            return sayhello(*args)
+    register.register_command("fetch_bot_id", "Fetch bot id", TestCommand(register, config).fetch_bot_id)
+
+    @register.future.register_command("sayhi", "Say hi to someone")
+    async def sayhi(*args):
+        # add your code here
     ```
 
 3. 调用命令：
@@ -139,7 +142,7 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
 
 2. 注册事件：
 
-    在 `main.py` 中，添加 `register_plugin` 函数，并传入事件类型、事件名称、事件执行函数、执行优先级。
+    在 `main.py` 中，导入 `register` 类，并调用 `register_event` 方法，传入事件类型、事件名称、事件执行函数、执行优先级。
 
     目前支持的事件类型有：
     - `client_connected`: 当客户端连接到 Coral 时触发。
@@ -151,16 +154,17 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
     **注意**: 事件名称可以不唯一，但我还是不推荐这么做，因为可能会导致事件的执行顺序混乱。
 
     ```python
-    def register_plugin(register, config, perm_system):
-        register.register_event("prepare_reply", "Receivemessage", on_message, 1)
+    from Coral import register, config
 
-        register.register_event("prepare_reply", "Receivemessage",TestEvent(register, config).on_message, 1)
+    register.register_event("prepare_reply", "Receivemessage", on_message, 1)
 
-        register.register_event("client_connected", "Clientconnected", TestEvent(register, config).connected, 1)
+    register.register_event("prepare_reply", "Receivemessage",TestEvent(register, config).on_message, 1)
 
-        @register.future.register_event("client_disconnected", "Clientdisconnected", 1)
-        async def client_disconnected():
-            return func()
+    register.register_event("client_connected", "Clientconnected", TestEvent(register, config).connected, 1)
+
+    @register.future.register_event("client_disconnected", "Clientdisconnected", 1)
+    async def client_disconnected():
+        # add your code here
     ```
 
 ## 注册函数
@@ -201,17 +205,18 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
 
 2. 注册函数：
 
-    在 `main.py` 中，添加 `register_plugin` 函数，并传入函数名称、函数执行函数。
+    在 `main.py` 中，导入 `register` 类，并调用 `register_function` 方法，传入函数名称、函数执行函数。
 
     ```python
-    def register_plugin(register, config, perm_system):
-        register.register_function("on_function_call", on_function_call)
+    from Coral import register, config
 
-        register.register_function("on_function_call", TestFunction(register, config).on_function_call)
+    register.register_function("on_function_call", on_function_call)
 
-        @register.future.register_function("test_func", 1)
-        async def test_func(*args):
-            return func(*args)
+    register.register_function("on_function_call", TestFunction(register, config).on_function_call)
+
+    @register.future.register_function("test_func", 1)
+    async def test_func(*args):
+        # add your code here
     ```
 
 3. 调用函数：

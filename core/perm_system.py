@@ -1,6 +1,5 @@
 import os
 import pickle
-import json
 import logging
 from collections import defaultdict
 
@@ -48,7 +47,7 @@ class PermSystem:
 
     def load_user_perms(self):
         if not os.path.exists(self.perm_file):
-            logger.warning(f"[yellow]Permission file not found, creating a default one.[/]")
+            logger.warning("[yellow]Permission file not found, creating a default one.[/]")
             self.user_perms = defaultdict(list)
         else:
             with open(self.perm_file, 'rb') as f:
@@ -145,3 +144,4 @@ class PermSystem:
                 else:
                     message += f"  {perm[0]} in group {perm[1]}\n"
         return str(message)
+    

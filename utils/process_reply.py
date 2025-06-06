@@ -88,19 +88,24 @@ class ProcessReply:
             logger.warning('[yellow]No process function is registered, message will not be processed.[/]')
             return None
         
-        if send_message['action'] == 'send_msg' and send_message['message'] is None:
-            return None
+        if not isinstance(send_message, list):
+            if send_message['action'] == 'send_msg' and send_message['message'] is None:
+                return None
+            
         await self.finish_reply(processed_message,send_message)
         return send_message
 
     async def finish_reply(self, message, send_message):
-        if send_message['action'] != 'send_msg':
-            return
-        reply = send_message['message']
-        sender_user_id = send_message['sender_user_id']
-        group_id = send_message['group_id']
-        if self.store_memory is not None:
-            await self.register.execute_function('store_memory', {"message": message,"reply": reply,"sender_user_id": sender_user_id, "group_id": group_id})
+        if not isinstance(send_message, list):
+            send_message = [send_message]
+        for msg in send_message:
+            if msg['action'] != 'send_msg':
+                return
+            reply = msg['message']
+            sender_user_id = msg['sender_user_id']
+            group_id = msg['group_id']
+            if self.store_memory is not None:
+                await self.register.execute_function('store_memory', {"message": message,"reply": reply,"sender_user_id": sender_user_id, "group_id": group_id})
 
     def is_image_message(self, message: str) -> tuple[bool, str]:
         """

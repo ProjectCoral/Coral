@@ -10,16 +10,17 @@ Coral 内置了权限系统，用户可以根据自己的需求进行权限控�
 
 1. 注册权限
 
-    在初步编写好 `register_plugin` 函数后，它看起来是这样的：
+    在初步编写好注册逻辑后，它看起来是这样的：
 
     ```python
-    def register_plugin(register, config, perm_system):
-        register.register_command("fetch_bot_id", "Fetch bot id", TestCommand(register, config).fetch_bot_id)
+    from Coral import register, config
+    register.register_command("fetch_bot_id", "Fetch bot id", TestCommand(register, config).fetch_bot_id)
     ```
 
-    在这里，我们可以看到 `perm_system` 参数，它是一个 `PermSystem` 类的实例，我们可以调用它的 `register_perm` 方法来注册权限：
+    在这里，我们可以导入 `perm_system` ，它是一个 `PermSystem` 类的实例，我们可以调用它的 `register_perm` 方法来注册权限：
 
     ```python
+    from Coral import perm_system
     perm_system.register_perm("test_perm", "Test permission")
     perm_system.register_perm("test_perm.sub_perm", "Sub permission")
     ```
@@ -34,6 +35,7 @@ Coral 内置了权限系统，用户可以根据自己的需求进行权限控�
     Coral 内置的权限系统已经提供了一个快速绑定方式，只需在注册时传入即可：
 
     ```python
+    from Coral import register, config
     register.register_command("fetch_bot_id", "Fetch bot id", TestCommand(register, config).fetch_bot_id, ["test_perm", "test_perm.sub_perm"])
     ```
     这里，我们传入了 `["test_perm", "test_perm.sub_perm"]` 作为权限列表，表示只有拥有这两个权限的用户才能执行 `fetch_bot_id` 命令。
@@ -68,21 +70,22 @@ Coral 内置的权限系统并没有为其他功能提供快捷的接入方式�
 
 1. 注册权限
 
-    首先，我们需要在 `register_plugin` 函数中注册权限：
+    首先，我们需要注册权限：
 
     ```python
+    from Coral import perm_system
     perm_system.register_perm("chat_command", "Base Permission")
     perm_system.register_perm("chat_command.execute", "Allows the user to execute commands in chat")
     ```
 
-    在手动接入时，注册函数无需任何更改，最后的注册代码应该是：
+    或是在注册时接入：
 
     ```python
-    def register_plugin(register, config, perm_system):
-        register.register_event('prepare_reply', 'chat_command', ChatCommand(register, perm_system).chat_command, 1)
-
-        perm_system.register_perm("chat_command", "Base Permission")
-        perm_system.register_perm("chat_command.execute", "Allows the user to execute commands in chat")
+    from Coral import register, config, perm_system
+    register.register_event('prepare_reply', 'chat_command', ChatCommand(register, perm_system).chat_command, 1)
+    
+    perm_system.register_perm("chat_command", "Base Permission")
+    perm_system.register_perm("chat_command.execute", "Allows the user to execute commands in chat")
     ```
 
 2. 编写权限检查代码

@@ -11,10 +11,10 @@ Coral 全局配置是通过 `config` 类提供的。
 
 1. 引入 `config` 类
 
-    在编写好注册函数后，我们得到了示例类：
+    在编写好函数后，我们得到了示例类：
     ```python
-    def register_function(register, config, perm_system):
-        register.register_function("get_bot_id", TestFunction(register, config).get_bot_id)
+    from Coral import register, config
+    register.register_function("get_bot_id", TestFunction(register, config).get_bot_id)
 
     class TestFunction:
         register = None

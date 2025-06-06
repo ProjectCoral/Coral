@@ -3,6 +3,7 @@ import json
 import uvicorn
 import logging
 import asyncio
+import random
 
 from .OnebotAdapter import OnebotAdapter
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -22,7 +23,9 @@ class ReverseWS:
         self.register = register
         self.websocket_port = self.config.get("websocket_port", 21050)
         self.process_reply = process_reply
-        self.receive_data_task = None 
+        self.receive_data_task = None
+        self.last_send_message_id = None
+        self.last_recevied_message_id = None
         self.lock = asyncio.Lock()
         self.adapter = OnebotAdapter()
 
@@ -116,16 +119,26 @@ class ReverseWS:
                         if item is None:
                             continue
                         reply_json = self.adapter.build_onebot_message({"action": "send_msg", "message": item, "sender_user_id": sender_user_id, "group_id": group_id})
+                        await asyncio.sleep(0.5)
                         await websocket.send_text(reply_json)
+                        data = json.loads(await websocket.receive_text())
+                        if data is not None and 'message_id' in data:
+                            self.last_send_message_id = data['message_id']
                     return
                 else:
                     if message is None:
                         return
                     reply_json = self.adapter.build_onebot_message({"action": "send_msg", "message": message, "sender_user_id": sender_user_id, "group_id": group_id})
+                    await asyncio.sleep(0.5)
                     await websocket.send_text(reply_json)
+                    data = json.loads(await websocket.receive_text())
+                    if data is not None and 'message_id' in data:
+                        self.last_send_message_id = data['message_id']
                 return
             else:
+                result_buffer['message_id'] = self.last_send_message_id if self.last_send_message_id is not None else 0
                 reply_json = self.adapter.build_onebot_message(result_buffer)
+                await asyncio.sleep(0.5)
                 await websocket.send_text(reply_json)
                 return
             
@@ -149,6 +162,9 @@ class ReverseWS:
                 elif data['meta_event_type'] == 'heartbeat':
                     return None
             
+            if 'message_id' in data:
+                self.last_recevied_message_id = data['message_id']
+
             if 'status' in data:
                 if data['status'] != 'ok':
                     logger.error(f"发送/接收数据错误： {data['status']}")

@@ -16,7 +16,7 @@ class PluginManager:
         self.config = config
         self.perm_system = perm_system
         self.plugin_dir = self.config.get("plugin_dir", "./plugins")
-        self.config.set("pluginmanager_version", "241113_early_developement")
+        self.config.set("pluginmanager_version", "250606_early_developement")
         self.pluginmanager_version = self.config.get("pluginmanager_version")
         self.register = register
         self.plugins = []
@@ -69,15 +69,6 @@ class PluginManager:
         else:
             logger.warning("[yellow]Plugin [/]" + str(plugin_name) + "[yellow] did not provide a compatibility check, which is deprecated and might be broken in a future version.[/]")
         self.plugins.append(plugin_name)
-        if hasattr(module, 'register_plugin'):
-            try:
-                module.register_plugin(self.register, self.config, self.perm_system)
-            except Exception as e:
-                logger.exception(f"[red]During plugin registration, an error occurred: {e}[/]")
-                logger.error("[red]Failed to register plugin [/]" + str(plugin_name) + "[red] , skipping...[/]")
-                return None
-        else:
-            logger.warning("[yellow]Plugin [/]" + str(plugin_name) + "[yellow] did not provide a register function, will not do anything.[/]")
 
     def show_plugins(self, *args):
         return  "Available plugins:\n" + str(self.plugins) + "\n Running Plugin Manager Version " + self.pluginmanager_version + "\n"
@@ -133,4 +124,3 @@ class PluginManager:
             logger.exception(f"[red]During plugin reloading, an error occurred: {e}[/]")
             logger.error("[red]Failed to reload plugin [/]" + str(plugin_name) + "[red] , skipping...[/]")
             return None
-

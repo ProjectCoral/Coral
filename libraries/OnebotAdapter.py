@@ -471,9 +471,9 @@ class OnebotAdapter:
         }
         return json.dumps(data, ensure_ascii=False)
     
-    def get_version_to_onebot(self, coral_message):
+    def get_version_info_to_onebot(self, coral_message):
         data = {
-            "action": "get_version"
+            "action": "get_version_info"
         }
         return json.dumps(data, ensure_ascii=False)
     

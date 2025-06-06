@@ -1,5 +1,8 @@
 from collections import defaultdict, deque
 import logging
+import datetime
+import random
+import traceback
 from .future import RegisterFuture
 logger = logging.getLogger(__name__)
 
@@ -13,27 +16,41 @@ class Register:
         self.load_buildin_plugins = None
         self.future = RegisterFuture(self)
         self.default_events = ["coral_initialized", "coral_shutdown", "client_connected", "client_disconnected", "prepare_reply", "finish_reply"]
+        self.crash_times = {}
 
     def hook_perm_system(self, perm_system: object):
         self.perm_system = perm_system
 
     def register_event(self, listener_queue: str, event_name: str, function: object, priority: int = 1):
+        if listener_queue in self.event_queues and event_name in [event[0] for event in self.event_queues[listener_queue]]:
+            logger.error(f"[red bold]Event [/]{event_name}[red bold] already registered in queue [/]{listener_queue}")
+            return
         self.event_queues[listener_queue].append((event_name, function, priority))
 
     def register_command(self, command_name: str, description: str, function: object, permission: str = None):
+        if command_name in self.commands:
+            logger.error(f"[red bold]Command [/]{command_name}[red bold] already registered[/]")
+            return
         self.commands[command_name] = function
         self.command_descriptions[command_name] = description
         if permission is not None:
             self.command_permissions[command_name] = permission
 
     def register_function(self, function_name: str, function: object):
+        if function_name in self.functions:
+            logger.error(f"[red bold]Function [/]{function_name}[red bold] already registered[/]")
+            return
         self.functions[function_name] = function
 
-    def unregister_event(self, listener_queue: str, event_name: str, function: object):
+    def unregister_event(self, listener_queue: str, event_name: str):
+        to_remove = []
         for event, func, priority in self.event_queues[listener_queue]:
-            if event == event_name and func == function:
-                self.event_queues[listener_queue].remove((event, func, priority))
-                break
+            if event == event_name:
+                to_remove.append((event, func, priority))
+
+        if to_remove:
+            for item in to_remove:
+                self.event_queues[listener_queue].remove(item)
 
     def unregister_command(self, command_name: str):
         if command_name in self.commands:
@@ -52,7 +69,8 @@ class Register:
                 result = await self.functions[function_name](*args, **kwargs)
             except Exception as e:
                 logger.exception(f"[red]Error executing function {function_name}: {e}[/]")
-                raise e
+                self.crash_record("function", function_name, str(e), traceback.format_exc())
+                return None
             return result
         raise ValueError(f"Function {function_name} not found, probably you forget register it")
 
@@ -66,13 +84,15 @@ class Register:
                     return self.commands[command_name]()
                 except Exception as e:
                     logger.exception(f"[red]Error executing command {command_name}: {e}[/]")
-                    raise e
+                    self.crash_record("command", command_name, str(e), traceback.format_exc())
+                    return f"Error executing command {command_name}: {e}"
             logger.debug(f"Executing command {command_name} with data {data}")
             try:
                 return self.commands[command_name](data)
             except Exception as e:
                 logger.exception(f"[red]Error executing command {command_name}: {e}[/]")
-                raise e
+                self.crash_record("command", command_name, str(e), traceback.format_exc())
+                return f"Error executing command {command_name}: {e}"
         return self.no_command()
     
     def no_command(self):
@@ -93,7 +113,8 @@ class Register:
                 result = await func([*args, result_buffer])
             except Exception as e:
                 logger.exception(f"[red]Error executing event {event_name}: {e}[/]")
-                raise e
+                self.crash_record("event", event_name, str(e), traceback.format_exc(), event)
+                result = None
             if result is not None:
                 if isinstance(result, tuple) and len(result) == 3:
                     result_args, interrupt, new_priority = result
@@ -124,6 +145,7 @@ class Register:
         self.command_descriptions.clear()
         self.command_permissions.clear()
         self.functions.clear()
+        self.crash_times.clear()
         logger.info("All events, commands, functions and permissions have been unloaded.")
         if self.load_buildin_plugins is not None:
             self.load_buildin_plugins()
@@ -131,3 +153,35 @@ class Register:
         self.perm_system.registered_perms = {}
         self.perm_system.load_user_perms()
         logger.info("Coral Core has been reloaded.")
+
+    def crash_record(self, type: str, function_name: str, error: str, traceback: str, *listener_queue):
+        if type not in self.crash_times:
+            self.crash_times[type] = {}
+        if function_name not in self.crash_times[type]:
+            self.crash_times[type][function_name] = 0
+        self.crash_times[type][function_name] += 1
+        crash_tips = [
+            "Oops!",
+            "No worries, Coral is still running.",
+            "No, this shouldn't happen.",
+            "Smells like a *bug*.",
+            "I'm sorry, Dave. I'm afraid I can't do that.",
+            "What the heck is going on here?",
+            "Houston, we have a problem.",
+            "You're not supposed to be here.",
+            "Yet another bug has been found."
+        ]
+        with open(f"./logs/crash_{type}_{function_name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log", "w", encoding="utf-8") as f:
+            f.write(random.choice(crash_tips) + "\n")
+            f.write(f"Coral Core has crashed in {type} {function_name} at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("----------------------------------------\n")
+            f.write(f"Error: {error}\nTraceback:\n{traceback}")
+        if self.crash_times[type][function_name] >= 3:
+            logger.error(f"[red] Auto-disabling {type} [/]{function_name}[red] due to frequent crashes.[/]")
+            match type:
+                case "event":
+                    self.unregister_event(listener_queue[0], function_name)
+                case "command":
+                    self.unregister_command(function_name)
+                case "function":
+                    self.unregister_function(function_name)
