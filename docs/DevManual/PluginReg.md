@@ -2,222 +2,145 @@
 
 Coral 插件注册的行为分为三种类型：命令、监听事件、函数。
 
-无论哪种，都需要在 `main.py` 中调用 `register` 类的方法，并传入相应的参数。
+无论哪种，都需要在 `_init_.py` 中调用 `register` 类的方法 / 使用 `Coral` 内部装饰器，并传入相应的参数。
 
-> 在11月的更新中，新增了对修饰器的支持，可以更方便地注册命令。
+> [!important] 
+> 在25/6/8的更新中，完全重构了注册方式，原先的[注册方式](PluginReg_old.md)仍然可以继续使用，但不再推荐。
+
+返回的数据格式请参考 [Protocol 文档](Protocol.md)。
 
 ## 注册命令
 
 命令是指在操作台中，用户输入特定的命令时，插件可以执行一些操作。
 
-1. 编写命令逻辑：
-
-    在 `main.py` 中，定义一个函数/类，该函数会在用户输入命令时被调用。
-
-    **注意**: 需要打印/传递的信息必须以 `return` 语句的形式返回。
-
-    示例函数：
-
-    ```python
-    def sayhello(self, args):
-        return f"Hello, {args}!"
-    ```
-
-    你也可以定义一个类，此时可以传递 Coral 的 `register` 和 `config` 类，这样可以调用其他行为\获取全局配置。
-
-    示例类：
-
-    ```python
-    class TestCommand:
-        register = None
-        config = None
-
-        def __init__(self, register, config):
-            self.register = register
-            self.config = config
-
-        def howmanycommands(self):
-            return len(self.register.commands)
-        
-        def fetch_bot_id(self):
-            return self.config.get("bot_id", "unknown")
-    ```
+在编写命令插件时，需要定义一个函数，并使用 `on_command` 装饰器进行装饰。
 
 
-2. 注册命令：
-
-    在 `main.py` 中，添加 `register_plugin` 函数，并传入命令名称、命令描述、命令执行函数。
-
-
-    **注意**: 命令名称必须唯一，否则会覆盖已注册的命令。
-
-    ```python
-    def register_plugin(register, config, perm_system):
-        register.register_command("sayhello", "Say hello to someone", sayhello)
-
-        register.register_command("howmanycommands", "How many commands are registered", TestCommand(register, config).howmanycommands)
-
-        register.register_command("fetch_bot_id", "Fetch bot id", TestCommand(register, config).fetch_bot_id)
-
-        @register.future.register_command("sayhi", "Say hi to someone")
-        async def sayhi(*args):
-            return sayhello(*args)
-    ```
-
-3. 调用命令：
-
-    在操作台中，输入命令名称，即可调用命令。
-
-    或是在代码中，使用 `register.execute_command` 调用命令，并传入命令名称、用户 ID、群组 ID、命令参数(可选)。
-
-    ```python
-    register.execute_command("sayhello", user_id, group_id, "world")
-
-    register.execute_command("howmanycommands", user_id, group_id)
-
-    register.execute_command("fetch_bot_id", user_id, group_id)
-    ```
-
-    若想要仅在代码处调用，不考虑用户侧，可以将 `user_id` 设置为 `Console`，`group_id` 设置为 任意值(详情请参考 [权限系统用户文档](https://github.com/ProjectCoral/Coral/blob/main/docs/UserManual/PermSystem.md))。
-
-    ```python
-    register.execute_command("fetch_bot_id", "Console", -1)
-    ```
-
-    > 关于 `user_id, group_id` 参数，请参考 [注册权限](#注册权限)。
-
-## 注册事件
-
-事件是指当用户触发某些事件时，插件可以执行一些操作。
-
-1. 编写事件逻辑：
-
-    在 `main.py` 中，定义一个**异步**函数/类，该**异步**函数会在用户触发事件时被调用。
-
-    在返回数据时，你需要包含：
-    - 处理后的信息(打包成字典)
-    - 是否处理过信息(`True` / `False`)
-    - 是否继续执行后续插件(`True` / `False`)
-    - 中断后更改事件优先级(数字越小，优先级越高)
-
-        关于优先级，数字越小，优先级越高， Coral 定义的事件优先级为 1，你可以根据自己的需求设置优先级为0/1/2...(**不建议，除非你知道你在做什么**)。
-
-    示例函数：
-
-    ```python
-    async def on_message(self, message):
-        logging.info(f"Received message: {message['message']}")
-        return message, False, False, 1
-    ```
-
-    你也可以定义一个类，此时可以传递 Coral 的 `register` 和 `config` 类，这样可以调用其他行为\获取全局配置。
-
-    示例类：
-
-    ```python
-    class TestEvent:
-        register = None
-        config = None
-
-        def __init__(self, register, config):
-            self.register = register
-            self.config = config
-
-        async def on_message(self, message):
-            logging.info(f"Received message: {message['message']}")
-        
-        async def connected(self):
-            logging.info("Client connected")
-            return None, False, False, 1
-    ```
-
-2. 注册事件：
-
-    在 `main.py` 中，添加 `register_plugin` 函数，并传入事件类型、事件名称、事件执行函数、执行优先级。
-
-    目前支持的事件类型有：
-    - `client_connected`: 当客户端连接到 Coral 时触发。
-    - `client_disconnected`: 当客户端断开连接时触发。
-    - `prepare_reply`: 当收到一条消息时，Coral 准备回复时触发。
-    - `finish_reply`: 当 Coral 完成回复时触发。
+```python
+from Coral import on_command, CommandEvent
 
 
-    **注意**: 事件名称可以不唯一，但我还是不推荐这么做，因为可能会导致事件的执行顺序混乱。
+@on_command('hello')
+async def hello(event: CommandEvent):
+    return 'Hello, world!' # str, MessageRequest, etc.
+```
 
-    ```python
-    def register_plugin(register, config, perm_system):
-        register.register_event("prepare_reply", "Receivemessage", on_message, 1)
+上面的代码定义了一个名为 `hello` 的命令，当用户输入 `hello` 时，插件会回复 `Hello, world!` 给用户。
 
-        register.register_event("prepare_reply", "Receivemessage",TestEvent(register, config).on_message, 1)
+`on_command` 装饰器参数：
 
-        register.register_event("client_connected", "Clientconnected", TestEvent(register, config).connected, 1)
+- `name`：命令的名称，用户输入时需要用这个名称。
+- `description`：命令的描述，用于帮助用户理解命令的作用。
+- `permission`：命令的权限，用于控制用户是否有权限执行该命令。
+  
+你也可以使用`@perm_require` 装饰器来控制权限（你仍然需要注册权限，参考[权限系统](PermSystem.md)）。
 
-        @register.future.register_event("client_disconnected", "Clientdisconnected", 1)
-        async def client_disconnected():
-            return func()
-    ```
+```python
+from Coral import on_command, CommandEvent, perm_require
+
+@on_command(
+    name = 'hello',
+    description = 'Say hello to the world')
+@perm_require('hello.use') # 控制用户是否有权限执行该命令
+async def hello(event: CommandEvent):
+    return 'Hello, world!'
+```
+
+你也可以导入全局配置 `config` 类，详情请参考 [config 文档](UseConfig.md)。
+
+## 注册监听事件
+
+监听事件是指插件可以监听到特定事件发生时，执行一些操作。
+
+> Coral 预定义事件请参考[Protocol 文档](Protocol.md)。
+
+目前 Coral 提供了以下装饰器：
+
+- `on_message`：监听消息事件`MessageEvent`。
+- `on_notice`：监听通知事件`NoticeEvent`。
+- `on_event`：用以自定义监听事件。
+
+装饰器参数：
+
+- `name`：事件的名称，用于帮助用户理解事件的作用。
+- `priority`：事件的优先级，用于控制事件的执行顺序。
+- `event_type`：监听的事件类型，可以是 `MessageEvent`、`NoticeEvent`、`Event` 等（仅在 `on_event` 中使用）。
+
+### 监听消息事件
+
+依旧从 `Coral` 内部装饰器 `on_message` 开始。
+
+```python
+from Coral import on_message, MessageEvent
+
+@on_message() # 监听所有消息事件
+async def handle_message(event: MessageEvent):
+    # 处理消息事件
+    pass
+```
+
+### 监听通知事件
+
+```python
+from Coral import on_notice, NoticeEvent
+
+@on_notice() # 监听所有通知事件
+async def handle_notice(event: NoticeEvent):
+    # 处理通知事件
+    pass
+```
+
+### 自定义监听事件
+
+```python
+from Coral import on_event, MessageEvent
+
+@on_event(event_type=MessageEvent) # 监听自定义事件
+async def handle_custom_event(event: Event):
+    # 处理自定义事件
+    pass
+```
+
+
+### 注册高级事件
+
+在重构的版本中，`register_event` 仍旧可以使用，其注册到了`GenericEvent`，可实现高级事件广播。
+
+```python
+from Coral import register
+register.register_event(
+    event_name='custom_event', # 自定义事件名称
+    listener_name='handle_custom_event', # 自定义事件处理函数名称
+    function=handle_custom_event, # 自定义事件处理函数
+    priority=1 # 自定义事件优先级
+)
+```
 
 ## 注册函数
 
-函数是指当代码调用特定的函数时，插件可以执行一些操作。
+函数是指插件可以执行一些特定的功能，并返回一些数据。
 
-1. 编写函数逻辑：
+在编写函数插件时，需要定义一个函数，并使用 `on_function` 装饰器进行装饰。
 
-    在 `main.py` 中，定义一个**异步**函数/类，该**异步**函数会在代码调用特定的函数时被调用。
+```python
+from Coral import on_function
 
-    编写函数时，如果有互通的需求，我推荐使用类，这样可以传递 Coral 的 `register` 和 `config` 类，可以调用其他行为\获取全局配置。
+@on_function('hello')
+async def hello():
+    return 'Hello, world!'
+```
 
-    **注意**: 函数名称必须唯一，否则会覆盖已注册的函数。
+上面的代码定义了一个名为 `hello` 的函数，当用户调用 `hello` 时，插件会返回 `Hello, world!` 给用户。
 
-    示例函数：
+`on_function` 装饰器参数：
 
-    ```python
-    async def on_function_call(self, func_name, args):
-        logging.info(f"Function {func_name} called with args: {args}")
-        return None
-    ```
+- `name`：函数的名称，插件调用时需要用这个名称。
 
-    示例类：
 
-    ```python
-    class TestFunction:
-        register = None
-        config = None
+## 注册权限
 
-        def __init__(self, register, config):
-            self.register = register
-            self.config = config
+你可能已经注意到，在注册命令时，可以使用 `perm_require` 装饰器来控制用户是否有权限执行该命令。
 
-        async def on_function_call(self, func_name, args):
-            logging.info(f"Function {func_name} called with args: {args}")
-            return None
-    ```
-
-2. 注册函数：
-
-    在 `main.py` 中，添加 `register_plugin` 函数，并传入函数名称、函数执行函数。
-
-    ```python
-    def register_plugin(register, config, perm_system):
-        register.register_function("on_function_call", on_function_call)
-
-        register.register_function("on_function_call", TestFunction(register, config).on_function_call)
-
-        @register.future.register_function("test_func", 1)
-        async def test_func(*args):
-            return func(*args)
-    ```
-
-3. 调用函数：
-
-    在代码中，使用 `register.execute_function` 调用函数，并传入函数名称和参数。
-
-    ```python
-    register.execute_function("on_function_call", "test_func", "arg1", "arg2")
-    ```
-
-# 注册权限
-
-你可能已经注意到，在注册命令、事件、函数时，都需要传入 `perm_system`，这是实现权限控制的接口。
+权限系统是 Coral 提供的插件权限管理系统，它可以让你更精细地控制用户对插件的访问权限。
 
 具体的权限控制逻辑，请参考 [权限系统](PermSystem.md)。

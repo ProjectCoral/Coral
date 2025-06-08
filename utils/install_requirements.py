@@ -4,10 +4,11 @@ import sys
 import logging
 import re
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn
+from Coral import register, config
 
 logger = logging.getLogger(__name__)
 
-def register_plugin(register, config, perm_system):
+def register_plugin():
     register.register_function('install_pip_requirements', InstallRequirements(config).install_pip_requirements)
     register.register_function('check_pip_requirements', InstallRequirements(config).check_pip_requirements)
 

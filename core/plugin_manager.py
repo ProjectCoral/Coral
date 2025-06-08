@@ -16,10 +16,12 @@ class PluginManager:
         self.config = config
         self.perm_system = perm_system
         self.plugin_dir = self.config.get("plugin_dir", "./plugins")
-        self.config.set("pluginmanager_version", "241113_early_developement")
+        self.config.set("pluginmanager_version", "250608_early_developement")
         self.pluginmanager_version = self.config.get("pluginmanager_version")
+        self.pluginmanager_meta = "250606"
         self.register = register
         self.plugins = []
+        self._loaded = set()
 
     async def load_all_plugins(self):
         if not os.path.exists(self.plugin_dir):
@@ -36,11 +38,15 @@ class PluginManager:
         logger.info(f"Loaded {len(self.plugins)} plugins.")
 
     async def load_plugin(self, plugin_name):
+        if plugin_name in self._loaded:
+            logger.warning(f"[yellow]Plugin {plugin_name} is already loaded, skipping...[/]")
+            return None
+        
         plugin_path = os.path.join(self.plugin_dir, plugin_name)
         if not os.path.isdir(plugin_path):
             return None
-        main_file = os.path.join(plugin_path, 'main.py')
-        if not os.path.exists(main_file):
+        init_file = os.path.join(plugin_path, '__init__.py')
+        if not os.path.exists(init_file):
             return None
 
         requirements_file = os.path.join(plugin_path,'requirements.txt')
@@ -52,34 +58,31 @@ class PluginManager:
                     return None
 
         try:
-            spec = importlib.util.spec_from_file_location(f"plugins.{plugin_name}", main_file)
+            spec = importlib.util.spec_from_file_location(f"plugins.{plugin_name}", init_file)
             module = importlib.util.module_from_spec(spec)
+            if hasattr(module, "__plugin_meta__"):
+                meta = getattr(module, "__plugin_meta__")
+                if "conpatibility" in meta and meta["conpatibility"] < self.pluginmanager_meta:
+                    logger.error("[red]Plugin [/]" + str(plugin_name) + "[red] is not compatible with this version of the Plugin Manager, skipping...[/]")
+                    return None
+            else:
+                logger.warning("[yellow]Plugin [/]" + str(plugin_name) + "[yellow] did not provide a compatibility check, which is deprecated and might be broken in a future version.[/]")
+                
+            sys.modules[f"plugins.{plugin_name}"] = module
+
             spec.loader.exec_module(module)
+            self._loaded.add(plugin_name)
+            self.plugins[plugin_name] = module
         except Exception as e:
             logger.exception(f"[red]During plugin loading, an error occurred: {e}[/]")
             logger.error("[red]Failed to load plugin [/]" + str(plugin_name) + "[red] , skipping...[/]")
             if os.path.exists(requirements_file + ".coral_installed"):
                 os.remove(requirements_file + ".coral_installed")
             return None
-
-        if hasattr(module, 'check_conpatibility'):
-            if not module.check_conpatibility(self.pluginmanager_version):
-                logger.error("[red]Plugin [/]" + str(plugin_name) + "[red] is not compatible with this version of the Plugin Manager, skipping...[/]")
-                return None
-        else:
-            logger.warning("[yellow]Plugin [/]" + str(plugin_name) + "[yellow] did not provide a compatibility check, which is deprecated and might be broken in a future version.[/]")
+        
         self.plugins.append(plugin_name)
-        if hasattr(module, 'register_plugin'):
-            try:
-                module.register_plugin(self.register, self.config, self.perm_system)
-            except Exception as e:
-                logger.exception(f"[red]During plugin registration, an error occurred: {e}[/]")
-                logger.error("[red]Failed to register plugin [/]" + str(plugin_name) + "[red] , skipping...[/]")
-                return None
-        else:
-            logger.warning("[yellow]Plugin [/]" + str(plugin_name) + "[yellow] did not provide a register function, will not do anything.[/]")
 
-    def show_plugins(self, *args):
+    async def show_plugins(self, *args):
         return  "Available plugins:\n" + str(self.plugins) + "\n Running Plugin Manager Version " + self.pluginmanager_version + "\n"
     
     async def reload_plugins(self):
@@ -98,15 +101,10 @@ class PluginManager:
         logger.info(f"Reloaded {len(self.plugins)} plugins.")
             
         
-    def reload_command(self, *args, **kwargs):
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+    async def reload_command(self, *args, **kwargs):
         start_time = time.time()
-        task = loop.create_task(self.reload_plugins())
-        loop.run_until_complete(task)
+        task = asyncio.create_task(self.reload_plugins())
+        await task
         end_time = time.time()
         logger.warning(f"[yellow]It's not recommended to reload frequently, as it can cause issues. Please use the reload command only when necessary.[/]")
         return f"Reloaded in {end_time - start_time:.2f} s"
@@ -115,8 +113,8 @@ class PluginManager:
         plugin_path = os.path.join(self.plugin_dir, plugin_name)
         if not os.path.isdir(plugin_path):
             return None
-        main_file = os.path.join(plugin_path, 'main.py')
-        if not os.path.exists(main_file):
+        init_file = os.path.join(plugin_path, '__init__.py')
+        if not os.path.exists(init_file):
             return None
         
         try:
@@ -133,4 +131,3 @@ class PluginManager:
             logger.exception(f"[red]During plugin reloading, an error occurred: {e}[/]")
             logger.error("[red]Failed to reload plugin [/]" + str(plugin_name) + "[red] , skipping...[/]")
             return None
-

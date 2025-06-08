@@ -7,6 +7,7 @@ import datetime
 from rich.logging import RichHandler
 from rich.traceback import install
 
+# 日志系统
 if not os.path.exists('logs'):
     os.makedirs('logs')
 
@@ -14,9 +15,22 @@ install(show_locals=True, max_frames=5)
 logging.basicConfig(level=logging.INFO, 
                     format="%(message)s", 
                     datefmt="[%H:%M:%S]",
-                    handlers=[logging.FileHandler(f"./logs/Coral_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log", encoding='utf-8'),
-                              RichHandler(rich_tracebacks=True, markup=True, omit_repeated_times=False)])
+                    handlers=[RichHandler(rich_tracebacks=True, markup=True, omit_repeated_times=False)])
 
+file_handler = logging.FileHandler(f"./logs/Coral_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log", encoding='utf-8')
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(logging.Formatter(fmt="[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s", datefmt="%H:%M:%S"))
+logging.getLogger().addHandler(file_handler)
+
+logging.debug("DEBUG MODE")
+logging.debug("--------------------------------------------")
+logging.debug(f"Coral start initialization at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+logging.debug(f"Running Python {sys.version} on Platform {sys.platform}")
+logging.debug(f"Current working directory: {os.getcwd()}")
+logging.debug("Warning: Coral is still in development and may have bugs and issues. Please report any bugs to the GitHub repository.")
+logging.debug("--------------------------------------------")
+
+# 初始化
 if not os.path.exists('config.json'):
     logging.info("Checking requirements, this may take a while...")
     with open('./requirements.txt', 'r') as f:
@@ -26,7 +40,7 @@ if not os.path.exists('config.json'):
             continue
         try:
             subprocess.check_call([sys.executable, '-m', 'pip', 'show', line.strip()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             logging.critical("[[bold red blink]]Failed to check requirement: {}[/]".format(line.strip()))
             logging.error("Did you install it?\U0001F605")
             sys.exit(1)
@@ -46,7 +60,7 @@ if not os.path.exists('config.json'):
         if not result:
             logging.critical("[bold red blink]You must agree to the EULA to use Coral.[/]")
             sys.exit(1)
-    except Exception as e:
+    except Exception:
         logging.warning("[yellow]Your device may not support prompt_toolkit dialog.[/]")
         from rich.console import Console
         from rich.markdown import Markdown

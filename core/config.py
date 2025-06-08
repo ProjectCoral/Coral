@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 main_config_template = {
     "websocket_port": 21050,
-    "bot_qq_id": 123456789,
+    "self_id": 123456789,
 }
 
 
