@@ -4,6 +4,8 @@ import logging
 import threading
 import queue
 import time
+from typing import Union
+from core.protocol import MessageRequest, MessageEvent, NoticeEvent, CommandEvent, MessageChain, MessageSegment
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +48,27 @@ class EventBus:
                 result = await handler(event)
                 if result:  # 处理器可以返回结果中断传播
                     logger.debug(f"Event handler {handler.__name__} returns result: {result}")
+                    result = convert_to_protocol(event, result) if isinstance(result, str) else result
                     self._result_queue.put(result)
                     return
             except Exception as e:
                 logger.error(f"Event handler error: {e}")
+        result = convert_to_protocol(event, result) if isinstance(result, str) else result
         self._result_queue.put(result) if result else None  # 无结果则返回None
+
+    def convert_to_protocol(self, event: Union[MessageEvent, NoticeEvent, CommandEvent], result: str) -> MessageRequest:
+        """将事件和结果转换为协议格式"""
+        logger.warning(f"Result returned a string, which is deprecated and might be broken in a future version.")
+        return MessageRequest(
+            platform=event.platform,
+            event_id=event.event_id,
+            self_id=event.self_id,
+            message=MessageChain([MessageSegment(type="text", data=result)]),
+            user=event.user,
+            group=event.group if hasattr(event, "group") else None
+        )
+
+
 
     def add_middleware(self, middleware: callable):
         """添加中间件"""

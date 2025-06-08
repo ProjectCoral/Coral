@@ -144,6 +144,26 @@ def on_message(name: str = None, priority: int = 5):
         return func
     return decorator
 
+def on_notice(name: str = None, priority: int = 5):
+    """通知事件处理器注册"""
+    def decorator(func):
+        nonlocal name
+        if name is None:
+            name = func.__name__
+        event_bus.subscribe(NoticeEvent, func, priority)
+        return func
+    return decorator
+
+def on_event(name: str = None, event_type: Any = MessageEvent, priority: int = 5):
+    """事件处理器注册"""
+    def decorator(func):
+        nonlocal name
+        if name is None:
+            name = func.__name__
+        event_bus.subscribe(event_type, func, priority)
+        return func
+    return decorator
+
 def on_command(name: str, description: str, permission: Union[str, List[str], None] = None):
     """命令处理器注册"""
     def decorator(func):

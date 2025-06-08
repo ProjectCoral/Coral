@@ -5,7 +5,7 @@ import random
 import traceback
 from typing import Union, List
 from .future import RegisterFuture
-from .protocol import GenericEvent, UserInfo, GroupInfo, MessageEvent, NoticeEvent, CommandEvent, MessageRequest, MessageChain, MessageSegment
+from .protocol import *
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +47,7 @@ class Register:
 
     def register_command(self, command_name: str, description: str, function: callable, permission: Union[str, List, None] = None):
         if command_name in self.commands:
-            logger.error(f"[red bold]Command [/]{command_name}[red bold] already registered[/]")
-            return
+            logger.warning(f"[yellow]Command [/]{command_name}[yellow] already registered, overwriting...[/]")
         self.commands[command_name] = function, permission
         self.command_descriptions[command_name] = description
 
@@ -88,7 +87,7 @@ class Register:
             return result
         raise ValueError(f"Function {function_name} not found, probably you forget register it")
 
-    async def execute_command(self, event: CommandEvent) -> Union[MessageRequest, None]:
+    async def execute_command(self, event: CommandEvent) -> Union[MessageRequest, ActionRequest, MessageEvent, NoticeEvent, CommandEvent, None]:
         """执行命令"""
         logger.debug(f"Executing command {event.command} from {event.user.user_id} in {event.group.group_id if event.group else None} with args {event.args}")
         
@@ -122,7 +121,7 @@ class Register:
         
         try:
             result = await handler(event)
-            if isinstance(result, MessageRequest):
+            if isinstance(result, (MessageRequest, ActionRequest, MessageEvent, NoticeEvent, CommandEvent)):
                 return result
             else:
                 return MessageRequest(

@@ -24,11 +24,11 @@ class ChatCommand:
         group_id = message.group.group_id if message.group else None
 
         if not raw_message.startswith('!'):
-            return None, False, 1
+            return None
 
         logger.info(f"Received command: {raw_message}")
         if not self.perm_system.check_perm(["chat_command", "chat_command.execute"], sender_user_id, group_id):
-            return None, False, 1
+            return None
         parts = raw_message.split(' ', 1)
         command = parts[0][1:]
         args = parts[1].strip() if len(parts) > 1 else ""
