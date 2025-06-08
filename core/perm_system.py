@@ -2,6 +2,8 @@ import os
 import pickle
 import logging
 from collections import defaultdict
+from typing import Union, List
+from .protocol import CommandEvent
 
 logger = logging.getLogger(__name__)
 
@@ -14,28 +16,23 @@ class PermSystem:
         self.config = config
         self.perm_file = self.config.get('perm_file', './coral.perms')
 
-        self.register.hook_perm_system(self)
-        logger.info("Permission system has been hooked with Register.")
-
         self.load_user_perms()
         self.registered_perms = {}
 
         self.register_perm("ALL", "All Permissions")
         self.register_perm("permission_system", "Base Permission")
 
-        self.register.register_command("perms", "perms <show|list>|<add|remove> <perm_name> <user_id> <group_id> - Manages user permissions.", self.strip_command, ["permission_system"])
+        self.register.register_command("perms", "perms <show|list>|<add|remove> <perm_name> <user_id> <group_id> - Manages user permissions.", self.perm_command, ["permission_system"])
 
-    
-    def strip_command(self, *args):
-        command_args = ' '.join(args)
-        if not command_args:
+    async def perm_command(self, command: CommandEvent):
+        if not command.args:
             return "Invalid command format.\nUsage:\n perms <show|list>\n perms <add|remove> <perm_name> <user_id> <group_id>"
         try:
-            if command_args.strip() == "show":
+            if command.args[0] == "show":
                 return self.show_perms()
-            elif command_args.strip() == "list":
+            elif command.args[0] == "list":
                 return self.list_perms()
-            func, args = command_args.strip().split(" ", 1)
+            func, args = command.args[0],' '.join(command.args[1:])
         except ValueError:
             return "Invalid command format."
         if func == "add":
@@ -88,7 +85,7 @@ class PermSystem:
         self.save_user_perms()
         return "Permission removed."
 
-    def check_perm(self, perm_name: str, user_id: int, group_id: int):
+    def check_perm(self, perm_name: Union[str, List[str]], user_id: int, group_id: int) -> bool:
         if user_id == 'Console':
             return True
         if isinstance(perm_name, list):

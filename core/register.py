@@ -3,63 +3,77 @@ import logging
 import datetime
 import random
 import traceback
+from typing import Union, List
 from .future import RegisterFuture
+from .protocol import GenericEvent, UserInfo, GroupInfo, MessageEvent, NoticeEvent, CommandEvent, MessageRequest, MessageChain, MessageSegment
+
 logger = logging.getLogger(__name__)
 
 class Register:
-    def __init__(self):
-        self.event_queues = defaultdict(deque)
-        self.commands = {}
+    event_bus = None
+
+    def __init__(self, event_bus: object):
+        self.event_bus = event_bus
+        self.commands = {}  # 命令名: (handler, permission)
         self.command_descriptions = {}
-        self.command_permissions = {}
         self.functions = {}
         self.load_buildin_plugins = None
         self.future = RegisterFuture(self)
-        self.default_events = ["coral_initialized", "coral_shutdown", "client_connected", "client_disconnected", "prepare_reply", "finish_reply"]
         self.crash_times = {}
+        self._event_handlers = defaultdict(dict)  # event_name: handler_func -> wrapper_func
+        self.perm_system = None
+
+        event_bus.subscribe(CommandEvent, self.execute_command)
 
     def hook_perm_system(self, perm_system: object):
         self.perm_system = perm_system
+        logger.info("Permission system has been hooked with Register.")
 
-    def register_event(self, listener_queue: str, event_name: str, function: object, priority: int = 1):
-        if listener_queue in self.event_queues and event_name in [event[0] for event in self.event_queues[listener_queue]]:
-            logger.error(f"[red bold]Event [/]{event_name}[red bold] already registered in queue [/]{listener_queue}")
+    def register_event(self, event_name: str, listener_name : str, function: callable, priority: int = 1):
+        if event_name in self._event_handlers and function in self._event_handlers[event_name]:
+            logger.error(f"[red bold]Event [/]{event_name}[red bold] already registered for [/]{listener_name}")
             return
-        self.event_queues[listener_queue].append((event_name, function, priority))
+        
+        async def wrapper(event: GenericEvent):
+            if event.name == event_name:
+                try:
+                    await function()
+                except Exception as e:
+                    logger.exception(f"[red]Error in event handler: {e}[/]")
+                    self.crash_record("event", event_name, str(e), traceback.format_exc(), listener_name)
+        
+        self._event_handlers[event_name][function] = wrapper
+        self.event_bus.subscribe(GenericEvent, wrapper, priority)
 
-    def register_command(self, command_name: str, description: str, function: object, permission: str = None):
+    def register_command(self, command_name: str, description: str, function: callable, permission: Union[str, List, None] = None):
         if command_name in self.commands:
             logger.error(f"[red bold]Command [/]{command_name}[red bold] already registered[/]")
             return
-        self.commands[command_name] = function
+        self.commands[command_name] = function, permission
         self.command_descriptions[command_name] = description
-        if permission is not None:
-            self.command_permissions[command_name] = permission
 
-    def register_function(self, function_name: str, function: object):
+    def register_function(self, function_name: str, function: callable):
         if function_name in self.functions:
             logger.error(f"[red bold]Function [/]{function_name}[red bold] already registered[/]")
             return
         self.functions[function_name] = function
 
     def unregister_event(self, listener_queue: str, event_name: str):
-        to_remove = []
-        for event, func, priority in self.event_queues[listener_queue]:
-            if event == event_name:
-                to_remove.append((event, func, priority))
-
-        if to_remove:
-            for item in to_remove:
-                self.event_queues[listener_queue].remove(item)
+        """取消注册事件"""
+        if event_name in self._event_handlers:
+            for function, wrapper in self._event_handlers[event_name].items():
+                self.event_bus.unsubscribe(GenericEvent, wrapper)
+            del self._event_handlers[event_name]
 
     def unregister_command(self, command_name: str):
+        """取消注册命令"""
         if command_name in self.commands:
             del self.commands[command_name]
+        if command_name in self.command_descriptions:
             del self.command_descriptions[command_name]
-            if command_name in self.command_permissions:
-                del self.command_permissions[command_name]
 
     def unregister_function(self, function_name: str):
+        """取消注册功能函数"""
         if function_name in self.functions:
             del self.functions[function_name]
 
@@ -74,84 +88,97 @@ class Register:
             return result
         raise ValueError(f"Function {function_name} not found, probably you forget register it")
 
-    def execute_command(self, command_name: str, user_id: int, group_id: int = -1, data: any = None):
-        if self.perm_system is not None and command_name in self.command_permissions:
-            if not self.perm_system.check_perm(self.command_permissions[command_name], user_id, group_id):
-                return "You don't have permission to execute this command"
-        if command_name in self.commands:
-            if data is None:
-                try:
-                    return self.commands[command_name]()
-                except Exception as e:
-                    logger.exception(f"[red]Error executing command {command_name}: {e}[/]")
-                    self.crash_record("command", command_name, str(e), traceback.format_exc())
-                    return f"Error executing command {command_name}: {e}"
-            logger.debug(f"Executing command {command_name} with data {data}")
-            try:
-                return self.commands[command_name](data)
-            except Exception as e:
-                logger.exception(f"[red]Error executing command {command_name}: {e}[/]")
-                self.crash_record("command", command_name, str(e), traceback.format_exc())
-                return f"Error executing command {command_name}: {e}"
-        return self.no_command()
-    
+    async def execute_command(self, event: CommandEvent) -> Union[MessageRequest, None]:
+        """执行命令"""
+        logger.debug(f"Executing command {event.command} from {event.user.user_id} in {event.group.group_id if event.group else None} with args {event.args}")
+        
+        if event.command not in self.commands:
+            return MessageRequest(
+                platform=event.platform,
+                event_id=event.event_id,
+                self_id=event.self_id,
+                message=MessageChain([MessageSegment.text(self.no_command())]),
+                user=event.user,
+                group=event.group if event.group else None
+            )
+        
+        handler, permission = self.commands[event.command]
+        
+        # 权限检查
+        if permission and not self.perm_system.check_perm(
+            permission, 
+            event.user.user_id,
+            event.group.group_id if event.group else -1
+        ):
+            # return "Permission denied"
+            return MessageRequest(
+                platform=event.platform,
+                event_id=event.event_id,
+                self_id=event.self_id,
+                message=MessageChain([MessageSegment.text("Permission denied")]),
+                user=event.user,
+                group=event.group if event.group else None
+            )
+        
+        try:
+            result = await handler(event)
+            if isinstance(result, MessageRequest):
+                return result
+            else:
+                return MessageRequest(
+                    platform=event.platform,
+                    event_id=event.event_id,
+                    self_id=event.self_id,
+                    message=MessageChain([MessageSegment.text(result)]),
+                    user=event.user,
+                    group=event.group if event.group else None
+                )
+
+        except Exception as e:
+            logger.exception(f"[red]Error executing command {event.command}: {e}[/]")
+            self.crash_record("command", event.command, str(e), traceback.format_exc())
+            return MessageRequest(
+                platform=event.platform,
+                event_id=event.event_id,
+                self_id=event.self_id,
+                message=MessageChain([MessageSegment.text(f"Error executing command {event.command}: {e}")]),
+                user=event.user,
+                group=event.group if event.group else None
+            )
+        
     def no_command(self):
         return "No command found"
     
     def get_command_description(self, command_name: str):
         return self.command_descriptions.get(command_name, "No description found")
 
-    async def execute_event(self, event: str, *args) -> list:
-        interrupted = False
-        change_priority = None
-        if event not in self.event_queues:
-            raise ValueError(f"Event {event} not found, probably you forget register it")
-        result_buffer = []
-        for event_name, func, priority in self.event_queues[event]:
-            logger.debug(f"Executing event {event_name} with args {args}")
-            try:
-                result = await func([*args, result_buffer])
-            except Exception as e:
-                logger.exception(f"[red]Error executing event {event_name}: {e}[/]")
-                self.crash_record("event", event_name, str(e), traceback.format_exc(), event)
-                result = None
-            if result is not None:
-                if isinstance(result, tuple) and len(result) == 3:
-                    result_args, interrupt, new_priority = result
-                    logger.debug(f"Event {event_name} returns {result_args}, interrupt: {interrupt}, new priority: {new_priority}")
-                    if isinstance(result_args, list):
-                        if isinstance(result_args[1], list):
-                            result_buffer = result_args[1]
-                        if result_args[0] is not None:
-                            result_buffer = result_buffer.append(result_args[0])
-                    elif result_args is not None:
-                        result_buffer.append(result_args)
-                    if interrupt:
-                        interrupted = True
-                        change_priority = (event_name, func, new_priority)
-                        break
-        if interrupted and change_priority:
-            # 如果有中断，则将中断的监听器移动到队列的最前面
-            self.event_queues[event].remove(change_priority)
-            self.event_queues[event].appendleft(change_priority)
-        if result_buffer:
-            return result_buffer
-        return []
-
+    async def execute_event(self, event_name: str, platform: str = "coral"):
+        """执行事件（通过发布GenericEvent）"""
+        
+        event = GenericEvent(
+            name=event_name,
+            platform=platform
+        )
+        
+        await self.event_bus.publish(event)
     async def core_reload(self):
-        for event_queue in self.event_queues.values():
-            event_queue.clear()
+
+        for event_name, handlers in self._event_handlers.items():
+            for function, wrapper in handlers.items():
+                self.event_bus.unsubscribe(GenericEvent, wrapper)
+        self._event_handlers.clear()
+        self.event_bus._subscribers[MessageEvent].clear()
+        self.event_bus._subscribers[NoticeEvent].clear()
         self.commands.clear()
         self.command_descriptions.clear()
-        self.command_permissions.clear()
         self.functions.clear()
         self.crash_times.clear()
-        logger.info("All events, commands, functions and permissions have been unloaded.")
-        if self.load_buildin_plugins is not None:
-            self.load_buildin_plugins()
         self.perm_system.save_user_perms()
         self.perm_system.registered_perms = {}
+        logger.info("All events, commands, functions and permissions have been unloaded.")
         self.perm_system.load_user_perms()
+        if self.load_buildin_plugins:
+            self.load_buildin_plugins()
         logger.info("Coral Core has been reloaded.")
 
     def crash_record(self, type: str, function_name: str, error: str, traceback: str, *listener_queue):
