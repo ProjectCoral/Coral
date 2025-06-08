@@ -1,6 +1,6 @@
 # 接入权限系统
 
-Coral 内置了权限系统，用户可以根据自己的需求进行权限控制(**建议写成类**)。
+Coral 内置了权限系统，用户可以根据自己的需求进行权限控制。
 
 关于权限系统的权限的定义/使用，请参阅 [权限系统用户文档](https://github.com/ProjectCoral/Coral/blob/main/docs/UserManual/PermSystem.md)。
 
@@ -10,14 +10,16 @@ Coral 内置了权限系统，用户可以根据自己的需求进行权限控�
 
 1. 注册权限
 
-    在初步编写好注册逻辑后，它看起来是这样的：
-
     ```python
-    from Coral import register, config
-    register.register_command("fetch_bot_id", "Fetch bot id", TestCommand(register, config).fetch_bot_id)
+    from Coral import on_command, config
+    @on_command("fetch_self_id", "Fetch self id")
+    async def fetch_self_id(*args):
+        ...
     ```
 
-    在这里，我们可以导入 `perm_system` ，它是一个 `PermSystem` 类的实例，我们可以调用它的 `register_perm` 方法来注册权限：
+    这里，我们注册了一个 `fetch_self_id` 命令，我们想要限制只有拥有权限的用户才能执行。
+
+    如何注册权限？我们可以导入 `perm_system` ，它是一个 `PermSystem` 类的实例，我们可以调用它的 `register_perm` 方法来注册权限：
 
     ```python
     from Coral import perm_system
@@ -30,15 +32,28 @@ Coral 内置了权限系统，用户可以根据自己的需求进行权限控�
 
 2. 绑定权限
 
-    接下来，我们需要在 `register_plugin` 函数中绑定权限。
+    接下来，我们需要在函数中绑定权限。
 
     Coral 内置的权限系统已经提供了一个快速绑定方式，只需在注册时传入即可：
 
     ```python
-    from Coral import register, config
-    register.register_command("fetch_bot_id", "Fetch bot id", TestCommand(register, config).fetch_bot_id, ["test_perm", "test_perm.sub_perm"])
+    from Coral import on_command, config
+    @on_command("fetch_self_id", "Fetch self id", ["test_perm", "test_perm.sub_perm"])
+    async def fetch_self_id(*args):
+        ...
     ```
-    这里，我们传入了 `["test_perm", "test_perm.sub_perm"]` 作为权限列表，表示只有拥有这两个权限的用户才能执行 `fetch_bot_id` 命令。
+
+    或是使用装饰器 `@perm_require`:
+
+    ```python
+    from Coral import on_command, config, perm_require
+    @on_command("fetch_self_id", "Fetch self id")
+    @perm_require(["test_perm", "test_perm.sub_perm"])
+    async def fetch_self_id(*args):
+        ...
+    ```
+
+    这里，我们传入了 `["test_perm", "test_perm.sub_perm"]` 作为权限列表，表示只有拥有这两个权限的用户才能执行 `fetch_self_id` 命令。
 
     **注意**：这里的权限列表可以是任意多个权限，只要用户拥有其中任意一个权限，就能执行命令。
 
@@ -48,16 +63,38 @@ Coral 内置了权限系统，用户可以根据自己的需求进行权限控�
 
     > 输入 `perms show` 查看目前注册的权限，输入 `perms <add|remove> <perm_name> <user_id> <group_id>`  来授予或回收权限。详情请参阅 [权限系统用户文档](https://github.com/ProjectCoral/Coral/blob/main/docs/UserManual/PermSystem.md)。
 
-    你可以在代码中，使用 `register.execute_command` 调用命令，并传入命令名称、用户 ID 、群组 ID 、命令参数(可选)。
+    你可以在代码中，使用 `register.execute_command` 调用命令。
 
     ```python
-    register.execute_command("fetch_bot_id", user_id, group_id)
+    from Coral import register, CommandEvent, MessageChain, UserInfo
+    register.execute_command(
+        event_id="123",
+        platform="qq",
+        self_id="12345",
+        command="fetch_self_id",
+        raw_message=MessageChain([...]),
+        user=UserInfo(...),
+        args=[]
+    )
     ```
 
-    若想要仅在代码处调用，不考虑用户侧，可以将 `user_id` 设置为 `Console`，`group_id` 设置为 任意值。
+    若想要仅在代码处调用，不考虑用户侧，可以将 `user` 设置为 `Console`，`group` 设置为 None。
 
     ```python
-    register.execute_command("fetch_bot_id", "Console", -1)
+    register.execute_command(
+        CommandEvent(
+            event_id=f"console-{time.time()}",
+            platform="console",
+            self_id="Console",
+            command="fetch_self_id",
+            raw_message=MessageChain([MessageSegment.text(f"fetch_self_id")]),
+            user=UserInfo(
+                platform="system",
+                user_id="Console"
+            ),
+            args=[]
+        )
+    )
     ```
 
 ## 手动接入其他功能
@@ -78,22 +115,12 @@ Coral 内置的权限系统并没有为其他功能提供快捷的接入方式�
     perm_system.register_perm("chat_command.execute", "Allows the user to execute commands in chat")
     ```
 
-    或是在注册时接入：
-
-    ```python
-    from Coral import register, config, perm_system
-    register.register_event('prepare_reply', 'chat_command', ChatCommand(register, perm_system).chat_command, 1)
-    
-    perm_system.register_perm("chat_command", "Base Permission")
-    perm_system.register_perm("chat_command.execute", "Allows the user to execute commands in chat")
-    ```
-
 2. 编写权限检查代码
 
     接下来，我们需要编写权限检查代码。
 
     ```python
-        class ChatCommand:
+    class ChatCommand:
         register = None
         perm_system = None
         
@@ -101,14 +128,18 @@ Coral 内置的权限系统并没有为其他功能提供快捷的接入方式�
             self.register = register
             self.perm_system = perm_system
 
-        async def chat_command(self, message, **kwargs):
-            raw_message = message['raw_message']
-            sender_user_id = message['sender_user_id']
-            group_id = message['group_id']
+        async def chat_command(self, message: MessageEvent):
+            ori_message = message.message
+            raw_message = ori_message.to_plain_text()
+            sender_user_id = message.user.user_id
+            group_id = message.group.group_id if message.group else None
 
-            # 权限检查
+            if not raw_message.startswith('!'):
+                return None
+
+            logger.info(f"Received command: {raw_message}")
             if not self.perm_system.check_perm(["chat_command", "chat_command.execute"], sender_user_id, group_id):
-                return {"message": None, "sender_user_id": sender_user_id, "group_id": group_id}, False, 1
+                return None
             # ...
     ```
 
