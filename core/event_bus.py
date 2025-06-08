@@ -48,13 +48,24 @@ class EventBus:
                 result = await handler(event)
                 if result:  # 处理器可以返回结果中断传播
                     logger.debug(f"Event handler {handler.__name__} returns result: {result}")
-                    result = convert_to_protocol(event, result) if isinstance(result, str) else result
-                    self._result_queue.put(result)
+                    if isinstance(result, list):
+                        for r in result:
+                            r = convert_to_protocol(event, r) if isinstance(r, str) else r
+                            self._result_queue.put(r)
+                    else:
+                        result = convert_to_protocol(event, result) if isinstance(result, str) else result
+                        self._result_queue.put(result)
                     return
             except Exception as e:
                 logger.error(f"Event handler error: {e}")
-        result = convert_to_protocol(event, result) if isinstance(result, str) else result
-        self._result_queue.put(result) if result else None  # 无结果则返回None
+        if isinstance(result, list):
+            for r in result:
+                r = convert_to_protocol(event, r) if isinstance(r, str) else r
+                self._result_queue.put(r) if r is not None else None
+        else:
+            result = convert_to_protocol(event, result) if isinstance(result, str) else result
+            self._result_queue.put(result) if result is not None else None
+
 
     def convert_to_protocol(self, event: Union[MessageEvent, NoticeEvent, CommandEvent], result: str) -> MessageRequest:
         """将事件和结果转换为协议格式"""
