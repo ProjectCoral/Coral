@@ -1,5 +1,6 @@
 import os
 import sys
+import ast
 import time
 import importlib.util
 import logging
@@ -18,7 +19,7 @@ class PluginManager:
         self.plugin_dir = self.config.get("plugin_dir", "./plugins")
         self.config.set("pluginmanager_version", "250608_early_developement")
         self.pluginmanager_version = self.config.get("pluginmanager_version")
-        self.pluginmanager_meta = "250606"
+        self.pluginmanager_meta = 250606
         self.register = register
         self.plugins = []
         self._loaded = set()
@@ -60,9 +61,11 @@ class PluginManager:
         try:
             spec = importlib.util.spec_from_file_location(f"plugins.{plugin_name}", init_file)
             module = importlib.util.module_from_spec(spec)
-            if hasattr(module, "__plugin_meta__"):
-                meta = getattr(module, "__plugin_meta__")
-                if "conpatibility" in meta and meta["conpatibility"] < self.pluginmanager_meta:
+
+            meta = self.get_plugin_meta(init_file)
+
+            if meta:
+                if "compatibility" in meta and int(meta["compatibility"]) < self.pluginmanager_meta:
                     logger.error("[red]Plugin [/]" + str(plugin_name) + "[red] is not compatible with this version of the Plugin Manager, skipping...[/]")
                     return None
             else:
@@ -72,7 +75,7 @@ class PluginManager:
 
             spec.loader.exec_module(module)
             self._loaded.add(plugin_name)
-            self.plugins[plugin_name] = module
+            
         except Exception as e:
             logger.exception(f"[red]During plugin loading, an error occurred: {e}[/]")
             logger.error("[red]Failed to load plugin [/]" + str(plugin_name) + "[red] , skipping...[/]")
@@ -81,6 +84,34 @@ class PluginManager:
             return None
         
         self.plugins.append(plugin_name)
+
+    def get_plugin_meta(self, plugin_init_file):
+        if not os.path.exists(plugin_init_file):
+            return None
+
+        with open(plugin_init_file, 'r', encoding='utf-8') as f:
+            source = f.read()
+
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            # 如果语法错误，无法解析
+            return None
+
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id == '__plugin_meta__':
+                        # 找到了 __plugin_meta__ 变量
+                        value_node = node.value
+                        if isinstance(value_node, ast.Dict):
+                            # 尝试将字典结构转换为字典对象
+                            keys = [k.s for k in value_node.keys if isinstance(k, ast.Str)]
+                            values = [v.s if isinstance(v, ast.Str) else v.n if isinstance(v, ast.Num) else repr(v) for v in value_node.values]
+                            return dict(zip(keys, values))
+                        else:
+                            return None
+        return None
 
     async def show_plugins(self, *args):
         return  "Available plugins:\n" + str(self.plugins) + "\n Running Plugin Manager Version " + self.pluginmanager_version + "\n"
