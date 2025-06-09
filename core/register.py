@@ -87,7 +87,7 @@ class Register:
             return result
         raise ValueError(f"Function {function_name} not found, probably you forget register it")
 
-    async def execute_command(self, event: CommandEvent) -> Union[MessageRequest, ActionRequest, MessageEvent, NoticeEvent, CommandEvent, None]:
+    async def execute_command(self, event: CommandEvent) -> Union[MessageBase, None]:
         """执行命令"""
         logger.debug(f"Executing command {event.command} from {event.user.user_id} in {event.group.group_id if event.group else None} with args {event.args}")
         
@@ -121,7 +121,7 @@ class Register:
         
         try:
             result = await handler(event)
-            if isinstance(result, (MessageRequest, ActionRequest, MessageEvent, NoticeEvent, CommandEvent)):
+            if isinstance(result, MessageBase):
                 return result
             else:
                 return MessageRequest(
