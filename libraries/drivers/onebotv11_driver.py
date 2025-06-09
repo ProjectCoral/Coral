@@ -4,7 +4,6 @@ import json
 from typing import Any, Dict
 from core.driver import BaseDriver
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-import threading
 import uvicorn
 
 logger = logging.getLogger(__name__)
@@ -30,15 +29,14 @@ class Onebotv11Driver(BaseDriver):
         """启动"""
         self._running = True
         self.register_to_fastapi(self.app)
-        self.thread = threading.Thread(target=uvicorn.run, args=(self.app,), kwargs={'port': self.port}, daemon=True)
-        self.thread.start()
+        self.thread = asyncio.get_event_loop().run_in_executor(None, lambda: uvicorn.run(self.app, port=self.port))
         logger.info("Reverse WebSocket driver started")
     
     async def stop(self):
         """停止WebSocket服务"""
         if self.websocket:
             try:
-                await self.websocket.close()
+                asyncio.run_coroutine_threadsafe(self.websocket.close(), asyncio.get_event_loop())
             except Exception as e:
                 logger.error(f"Error closing WebSocket connection: {e}")
             self.websocket = None

@@ -149,6 +149,7 @@ class ActionRequest(MessageBase):
     type: str  # 动作类型 (send_message, delete_message, kick_member, etc.)
     target: Union[UserInfo, GroupInfo]  # 目标对象
     data: dict  # 动作数据
+    group: Optional[GroupInfo] = None  # 群组信息
     delay: Optional[float] = None  # 延迟执行时间（秒）
 
 @dataclass

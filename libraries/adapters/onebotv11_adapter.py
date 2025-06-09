@@ -1,6 +1,6 @@
 import logging
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Union
 from core.protocol import MessageEvent, ActionRequest, MessageRequest, MessageChain, MessageSegment, UserInfo, GroupInfo, NoticeEvent, BotResponse
 from core.adapter import BaseAdapter
 from core.driver import BaseDriver
@@ -25,7 +25,7 @@ class Onebotv11Adapter(BaseAdapter):
         except Exception as e:
             logger.error(f"Error handling incoming event: {e}", exc_info=True)
     
-    def convert_to_protocol(self, event: Dict[str, Any]) -> Optional[MessageEvent]:
+    def convert_to_protocol(self, event: Dict[str, Any]) -> Union[MessageEvent, NoticeEvent, None]:
         """将OneBot原生事件转换为协议事件"""
         post_type = event.get('post_type')
         
@@ -33,7 +33,14 @@ class Onebotv11Adapter(BaseAdapter):
             return self._handle_message_event(event)
         elif post_type == 'notice':
             return self._handle_notice_event(event)
-        # 其他事件类型可以继续扩展
+        elif post_type == 'request':
+            # 处理请求事件（如加好友、加群请求）
+            logger.debug(f"Request event received: {event}")
+            return None
+        elif post_type == 'meta_event':
+            # 处理元事件（如心跳包）
+            logger.debug(f"Meta event received: {event}")
+            return None
         else:
             logger.debug(f"Unhandled event type: {post_type}")
             return None
@@ -77,13 +84,13 @@ class Onebotv11Adapter(BaseAdapter):
         )
     
     def _handle_notice_event(self, event: Dict) -> NoticeEvent:
-        """处理通知事件"""
+        """处理通知事件（保持OneBot原生类型）"""
         notice_type = event.get('notice_type')
         user = UserInfo(
             platform=self.name,
             user_id=str(event.get('user_id', ''))
         )
-        
+
         group = None
         if 'group_id' in event:
             group = GroupInfo(
@@ -91,24 +98,23 @@ class Onebotv11Adapter(BaseAdapter):
                 group_id=str(event['group_id'])
                 )
         
-        # 群成员增加事件
-        if notice_type == 'group_increase':
-            return NoticeEvent(
-                event_id=f"{event['time']}_{notice_type}",
+        operator = None
+        if 'operator_id' in event:
+            operator = UserInfo(
                 platform=self.name,
-                self_id=self.self_id,
-                type="group_member_increase",
-                user=user,
-                group=group,
-                operator=UserInfo(
-                    platform=self.name,
-                    user_id=str(event.get('operator_id', ''))
-                ),
-                raw=event
+                user_id=str(event['operator_id'])
             )
-        # 其他通知类型可以继续扩展
         
-        return None
+        return NoticeEvent(
+            event_id=f"{event['time']}_{notice_type}",
+            platform=self.name,
+            self_id=self.self_id,
+            type=notice_type,  # 直接使用OneBot原生类型
+            user=user,
+            group=group,
+            operator=operator,
+            raw=event
+        )
     
     async def handle_outgoing_action(self, action: ActionRequest):
         """处理主动动作请求"""
@@ -134,7 +140,6 @@ class Onebotv11Adapter(BaseAdapter):
     async def handle_outgoing_message(self, message: MessageRequest):
         """处理消息回复"""
         try:
-            # 构建OneBot消息格式
             onebot_message = []
             for seg in message.message.segments:
                 if seg.type == 'text':
