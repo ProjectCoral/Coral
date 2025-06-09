@@ -141,6 +141,12 @@ class Onebotv11Adapter(BaseAdapter):
         """处理消息回复"""
         try:
             onebot_message = []
+            if message.at_sender and message.user:
+                onebot_message.append({
+                    'type': 'at',
+                    'data': {'qq': message.user.user_id}
+                })
+
             for seg in message.message.segments:
                 if seg.type == 'text':
                     onebot_message.append({

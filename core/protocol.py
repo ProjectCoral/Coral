@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 from typing import Optional, Union, List, Dict, Any
 import time
 
+protocol_version = "1.0.1"  # 协议版本
+
 @dataclass
 class MessageBase:
     """消息基类，提供通用转换方法"""
@@ -53,7 +55,7 @@ class MessageSegment(MessageBase):
         return MessageSegment(type="text", data=content)
     
     @staticmethod
-    def image(url: str, width: int = None, height: int = None) -> MessageSegment:
+    def image(url: str, width: Optional[int] = None, height: Optional[int] = None) -> MessageSegment:
         """创建图片消息段"""
         return MessageSegment(type="image", data={"url": url, "width": width, "height": height})
     
@@ -62,6 +64,11 @@ class MessageSegment(MessageBase):
         """创建@用户消息段"""
         return MessageSegment(type="at", data={"user_id": user_id})
 
+    @staticmethod
+    def face(id: str) -> MessageSegment:
+        """创建表情消息段"""
+        return MessageSegment(type="face", data={"id": id})
+    
 @dataclass
 class MessageChain(MessageBase):
     """消息链 - 包含多个消息段"""
@@ -74,7 +81,7 @@ class MessageChain(MessageBase):
     def extend(self, segments: List[MessageSegment]) -> None:
         """扩展消息段列表"""
         self.segments.extend(segments)
-    
+
     def to_plain_text(self) -> str:
         """转换为纯文本（忽略非文本消息段）"""
         return "".join(
@@ -93,6 +100,17 @@ class MessageEvent(Event, MessageBase):
     raw: Optional[dict] = None  # 原始平台消息数据
     time: float = field(default_factory=time.time)  # 时间戳
 
+    def isprivate(self) -> bool:
+        """判断是否为私聊事件"""
+        return self.group is None
+    
+    def isgroup(self) -> bool:
+        return self.group is not None
+    
+    def ismetentioned(self) -> bool:
+        """判断是否被@"""
+        return any(seg.type == "at" and seg.data["user_id"] == str(self.self_id) for seg in self.message.segments)
+    
 @dataclass
 class NoticeEvent(Event, MessageBase):
     """通知事件 - 系统通知"""
@@ -108,6 +126,21 @@ class NoticeEvent(Event, MessageBase):
     raw: Optional[dict] = None  # 原始平台通知数据
     time: float = field(default_factory=time.time)  # 时间戳
 
+    def isprivate(self) -> bool:
+        """判断是否为私聊事件"""
+        return self.group is None
+    
+    def isgroup(self) -> bool:
+        return self.group is not None
+    
+    def ismetentioned(self) -> bool:
+        """判断target是否为自身"""
+        return self.target is not None and self.target.user_id == self.self_id
+
+    def isoperator(self) -> bool:
+        """判断operator是否为自身"""
+        return self.operator is not None and self.operator.user_id == self.self_id
+
 @dataclass
 class CommandEvent(Event, MessageBase):
     """命令事件 - 用户执行的命令"""
@@ -120,6 +153,13 @@ class CommandEvent(Event, MessageBase):
     group: Optional[GroupInfo] = None  # 群组信息
     args: List[str] = field(default_factory=list)  # 命令参数
     time: float = field(default_factory=time.time)  # 时间戳
+
+    def isprivate(self) -> bool:
+        """判断是否为私聊事件"""
+        return self.group is None
+    
+    def isgroup(self) -> bool:
+        return self.group is not None
 
 @dataclass
 class BotResponse(MessageBase):
