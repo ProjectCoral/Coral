@@ -40,19 +40,19 @@ Coral 是一个开源项目，任何人都可以贡献代码。但我们也需�
     1. 请确保PR的目标分支为`dev`分支。
 
     2. PR 标题应简明扼要，并包含修改的范围和目的。
-        > 示例：`[bugfix] 修复了 xxx 问题`
+        > 示例：`fix(xxx): 修复了 xxx 问题`
 
     3. 确保 PR 只解决一类问题
 
-        一个 PR 只能解决一个（类）问题，比如修复一个bug，添加一个新功能，优化一个功能等，避免出现 “一锅烩” 的情况。
+        一个 PR 只能解决一个（类）问题，比如修复一个bug，添加一个新功能，优化一个功能等，避免出现 “一锅烩” 的情况。<s>孩子们我也干了</s>
 
     4. 确保 commit 的可阅读性
 
         请确保 commit 的信息清晰易懂，建议遵循 [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) 规范。
         
-        commit 必须不带有或指明必要的副作用，如 `fix: 无法发送图片` 实际却附带更改了消息长度的限制。
+        commit 必须不带有或指明必要的副作用，如 `fix(adapters): 无法发送图片` 实际却附带更改了消息长度的限制。
 
-        若要修复某一个 issue，请不要仅提交 `fix: #issue-number` 这样的 commit，而应该附带更多信息，如 `fix: #issue-number 修复了 xxx 问题`。
+        若要修复某一个 issue，请不要仅提交 `fix(xxx): #issue-number` 这样的 commit，而应该附带更多信息，如 `fix(xxx): #issue-number 修复了 xxx 问题`。
 
     5. PR 在有审核后避免 force push
         
