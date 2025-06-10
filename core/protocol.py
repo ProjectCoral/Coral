@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Union, List, Dict, Any
 import time
 
-protocol_version = "1.0.1"  # 协议版本
+PROTOCOL_VERSION = "1.0.1"  # 协议版本
 
 @dataclass
 class MessageBase:

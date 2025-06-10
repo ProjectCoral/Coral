@@ -7,11 +7,11 @@
 | v1.0.0 | 2025-06-08 | 初始协议版本              |
 | v1.0.1 | 2025-06-09 | 添加事件基类<br>统一事件字段<br>新增BotResponse响应<br>添加实用方法 |
 
-你可以从 Coral 中导入 `protocol_version` 查看当前协议版本
+你可以从 Coral 中导入 `PROTOCOL_VERSION` 查看当前协议版本
 
 ```python
-from coral import protocol_version
-print(protocol_version)  # 1.0.1
+from Coral import PROTOCOL_VERSION
+print(PROTOCOL_VERSION)  # 1.0.1
 ```
 
 ## 核心协议类
