@@ -9,14 +9,7 @@ from rich.traceback import Traceback
 import traceback
 from io import StringIO
 
-from .config import Config
-from .register import Register
-from .plugin_manager import PluginManager, PLUGINMANAGER_VERSION
-from .perm_system import PermSystem
-from .event_bus import EventBus
-from .adapter import AdapterManager
-from .driver import DriverManager
-
+from .plugin_manager import PLUGINMANAGER_VERSION
 from .protocol import PROTOCOL_VERSION
 
 logger = logging.getLogger(__name__)
@@ -256,14 +249,22 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
 # 设置全局异常钩子
 sys.excepthook = global_exception_handler
 
+from .config import Config
+from .register import Register
+from .plugin_manager import PluginManager
+from .perm_system import PermSystem
+from .event_bus import EventBus
+from .adapter import AdapterManager
+from .driver import DriverManager
+
 try:
     config = Config(CONFIG_FILE)
     event_bus = EventBus()
     register = Register(event_bus)
     perm_system = PermSystem(register, config)
     plugin_manager = PluginManager(register, config, perm_system, PLUGIN_DIR)
-    driver_manager = DriverManager(config)
-    adapter_manager = AdapterManager(event_bus, config, driver_manager)
+    adapter_manager = AdapterManager(event_bus, config)
+    driver_manager = DriverManager(config, adapter_manager)
 except Exception as e:
     logger.critical(f"[red]Failed to initialize Coral Core.[/]")
     raise e
