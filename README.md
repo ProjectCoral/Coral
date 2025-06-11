@@ -4,7 +4,7 @@
     </div>
 <h1>Project Coral</h1>
 
-新一代（或许）python QQ 机器人框架
+新一代（或许）跨平台、可扩展的 python 机器人框架
 
 这个项目的灵感来源于<a href = "https://github.com/Moemu/Muice-Chatbot">沐雪(Muice-Chatbot)</a>
 
@@ -38,7 +38,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-### 注意事项：
+### 注意事项
 
 - `AGPL-3.0` 协议属于传染性协议，因此建议直接/间接接触 Coral 项目的软件使用 `AGPL-3.0` 开源
 
@@ -49,6 +49,12 @@
 - 若引用 Coral 发布的软件包而不修改 Coral 源码，请在软件包的 `README` 中声明 Coral 项目的链接。
 
 - 若修改 Coral 源代码再发布，**或参考 Coral 内部实现发布另一个项目**，则衍生项目必须在**文章首部**或 Coral 相关内容**首次出现**的位置**明确声明**来源于[本仓库](https://github.com/ProjectCoral/Coral)。不得扭曲或隐藏免费且开源的事实。
+
+## 介绍
+
+Coral 是一个跨平台、可扩展的 Python 机器人框架，Coral 基于事件驱动，使用异步 IO，能够为你的需求实现提供便捷灵活的支持。
+
+Coral 与 Nonebot2 虽然都是 Python 机器人框架，但它们的实现方式不同，使用对象也不同。相较于 Nonebot2 优势在于可同时接入多个平台，支持多种协议分配，并且支持对单一平台的单独操作。
 
 ## 功能
 
@@ -84,7 +90,7 @@
 
 > 文档参考 [mirai](https://github.com/mamoe/mirai)
 
-### 总代码贡献：
+### 总代码贡献
 
 <a href="https://github.com/ProjectCoral/Coral/contributors">
     <img src="https://contrib.rocks/image?repo=ProjectCoral/Coral" />

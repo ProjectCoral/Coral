@@ -25,7 +25,7 @@
     - `requirements.txt` 用于声明插件依赖(可选)，若存在则会检查依赖是否满足并自动安装(我还是建议你搞个脚本，自动安装用的是 pip，网不好就抽风)。
 
 2. 插件元数据：
-   
+
    你可以在插件顶部声明元数据：
 
     ```python
@@ -34,11 +34,11 @@
         "version": "1.0.0",
         "author": "开发者名称",
         "description": "插件功能描述",
-        "conpatibility": "250606"  # 与PluginManager兼容的版本
+        "conpatibility": "250606"  # 与PluginManager兼容的最低版本
     }
     ```
 
-3. 插件逻辑： 
+3. 插件逻辑：
 
     - 插件的主文件会在插件被注册时被调用，具体的注册方式请参考 [插件注册](DevManual/PluginReg.md)。
 
@@ -51,9 +51,20 @@
     - 我建议你将插件的 data 目录放在`./data/插件名`  目录下，这样可以方便管理插件数据。
   
     - 目前你可以引入以下模块：
+
         ```python
-        from coral import register, config, perm_system
+        from Coral import event_bus, register, config, perm_system, adapter_manager, driver_manager, ...
         ```
+
+    > [!tip]
+    >
+    > - 我不想使用 Coral 提供的方法，但是对 nonebot2 的注册方式很熟悉。
+    >
+    > - 我有个 nonebot2 的项目，想迁移到 Coral 同时又不想改动太多代码。
+    >
+    > 有没有方法呢？
+    >
+    > 有的兄弟有的， Coral 强（行）兼（容）了 nonebot2 的注册方式，点击跳转 [Nonebot兼容层](DevManual/PluginReg_nonebot.md) 查看。
 
 4. 插件配置：
 
