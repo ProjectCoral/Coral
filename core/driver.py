@@ -2,9 +2,9 @@ import os
 import logging
 import importlib
 import asyncio
-from .adapter import BaseAdapter
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional
+from .adapter import BaseAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -19,17 +19,17 @@ class BaseDriver(ABC):
     @abstractmethod
     async def start(self):
         """启动驱动器"""
-        pass
+        raise NotImplementedError
     
     @abstractmethod
     async def stop(self):
         """停止驱动器"""
-        pass
+        raise NotImplementedError
     
     @abstractmethod
     async def send_action(self, action: Dict[str, Any]):
         """发送动作到平台"""
-        pass
+        raise NotImplementedError
     
     async def handle_receive(self, raw_data: Dict[str, Any]):
         """处理接收到的原始数据"""
@@ -103,5 +103,3 @@ class DriverManager:
                 logger.exception(f"Failed to load driver {driver_name}: {e}")
                 continue
         logger.info(f"Loaded {len(self.drivers)} drivers.")
-    
-

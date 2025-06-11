@@ -1,18 +1,29 @@
-from collections import defaultdict, deque
+from collections import defaultdict
 import logging
 import datetime
 import random
 import traceback
 from typing import Union, List
 from .future import RegisterFuture
-from .protocol import *
+from .protocol import (
+    CommandEvent,
+    MessageEvent,
+    NoticeEvent,
+    MessageRequest,
+    MessageChain,
+    MessageSegment,
+    GenericEvent,
+    MessageBase
+)
+from .event_bus import EventBus
+from .perm_system import PermSystem
 
 logger = logging.getLogger(__name__)
 
 class Register:
-    event_bus = None
+    event_bus: EventBus
 
-    def __init__(self, event_bus: object):
+    def __init__(self, event_bus: EventBus):
         self.event_bus = event_bus
         self.commands = {}  # 命令名: (handler, permission)
         self.command_descriptions = {}
@@ -23,9 +34,9 @@ class Register:
         self._event_handlers = defaultdict(dict)  # event_name: handler_func -> wrapper_func
         self.perm_system = None
 
-        event_bus.subscribe(CommandEvent, self.execute_command)
+        self.event_bus.subscribe(CommandEvent, self.execute_command)
 
-    def hook_perm_system(self, perm_system: object):
+    def hook_perm_system(self, perm_system: PermSystem):
         self.perm_system = perm_system
         logger.info("Permission system has been hooked with Register.")
 
@@ -162,8 +173,8 @@ class Register:
         await self.event_bus.publish(event)
     async def core_reload(self):
 
-        for event_name, handlers in self._event_handlers.items():
-            for function, wrapper in handlers.items():
+        for _, handlers in self._event_handlers.items():
+            for _, wrapper in handlers.items():
                 self.event_bus.unsubscribe(GenericEvent, wrapper)
         self._event_handlers.clear()
         self.event_bus._subscribers[MessageEvent].clear()

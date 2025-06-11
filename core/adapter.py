@@ -31,22 +31,22 @@ class BaseAdapter(ABC):
     @abstractmethod
     async def handle_incoming(self, raw_data: Dict[str, Any]):
         """处理来自驱动器的原始数据"""
-        pass
+        raise NotImplementedError
     
     @abstractmethod
     def convert_to_protocol(self, event: Any):
         """将平台原生事件转换为协议事件"""
-        pass
+        
     
     @abstractmethod
     async def handle_outgoing_action(self, action: ActionRequest):
         """处理发往平台的主动动作"""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def handle_outgoing_message(self, messgage: MessageRequest):
         """处理消息回复"""
-        pass
+        raise NotImplementedError
     
     def register_event_handler(self, event_type: type, handler: callable):
         """注册特定事件类型的处理函数"""

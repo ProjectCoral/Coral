@@ -1,12 +1,10 @@
 import os
-import sys
-import threading
 import time
 import logging
 import asyncio
+from typing import Union, List
 from pyfiglet import Figlet
 from colorama import Fore
-from typing import Union, List
 
 from core.protocol import *
 from core.core import (
@@ -20,12 +18,11 @@ from core.core import (
     CORAL_VERSION
 )
 
-logger = logging.getLogger(__name__)
-
-
 import utils.commands
 import utils.install_requirements
 import utils.chat_command
+
+logger = logging.getLogger(__name__)
 
 class Coral:
     def __init__(self):

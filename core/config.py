@@ -9,7 +9,6 @@ main_config_template = {
     "self_id": 123456789,
 }
 
-
 class Config:
     main_config = "./config.json"
 
@@ -24,7 +23,7 @@ class Config:
             self.config = main_config_template
         else:
             try:
-                with open(config, "r") as f:
+                with open(config, "r", encoding="utf-8") as f:
                     self.config = json.load(f)
             except Exception as e:
                 logger.exception(f"[red]Error loading config file: {e}[/]")
@@ -45,5 +44,5 @@ class Config:
     def save(self, config=None):
         if not config:
             config = self.main_config
-        with open(config, "w") as f:
+        with open(config, "w", encoding="utf-8") as f:
             json.dump(self.config, f, indent=4)

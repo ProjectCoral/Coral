@@ -79,7 +79,7 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     # 生成错误提示
-    crash_tips = [
+    random_tip = random.choice([
         "Oops!",
         "No, this shouldn't happen.",
         "Smells like a *bug*.",
@@ -88,52 +88,50 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
         "Houston, we have a problem.",
         "You're not supposed to be here.",
         "Yet another bug has been found."
-    ]
-    random_tip = random.choice(crash_tips)
-
+    ])
 
     # 添加错误基本信息
     buffer_console.print(f"{random_tip}")
-    buffer_console.print(f"Coral Core ran into a critical error and needs to shut down.")
+    buffer_console.print("Coral Core ran into a critical error and needs to shut down.")
     buffer_console.print(f"Timestamp: ({timestamp})")
 
-    buffer_console.print(f"Possible causes:")
-    buffer_console.print(f"\t- Coral Core is out of date.")
-    buffer_console.print(f"\t- A plugin is causing the error.")
-    buffer_console.print(f"\t- Coral Core has encountered an unexpected error.")
-    buffer_console.print(f"\t- Your configuration is incorrect.")
-    buffer_console.print(f"\t- Your system is having hardware or software issues.")
+    buffer_console.print("Possible causes:")
+    buffer_console.print("\t- Coral Core is out of date.")
+    buffer_console.print("\t- A plugin is causing the error.")
+    buffer_console.print("\t- Coral Core has encountered an unexpected error.")
+    buffer_console.print("\t- Your configuration is incorrect.")
+    buffer_console.print("\t- Your system is having hardware or software issues.")
 
     # 打印Coral Core版本信息
-    buffer_console.print(f"\n-----------------------Coral Core Information----------------------")
+    buffer_console.print("\n-----------------------Coral Core Information----------------------")
 
     buffer_console.print(f"Core Version: {CORAL_VERSION}")
     buffer_console.print(f"PluginManager Version: {PLUGINMANAGER_VERSION}")
     buffer_console.print(f"Protocol Version: {PROTOCOL_VERSION}")
 
     if event_bus:
-        buffer_console.print(f"\nEvent Bus subscribed events:\n")
+        buffer_console.print("\nEvent Bus subscribed events:\n")
         for event_type in event_bus._subscribers.keys():
             buffer_console.print(f"\t{event_type.__name__}: {[handler[0].__name__ if isinstance(handler, tuple) else handler.__name__ for handler in event_bus._subscribers[event_type]]}")
     else:
-        buffer_console.print(f"\n\U000026A0 Event Bus not initialized.")
+        buffer_console.print("\n\U000026A0 Event Bus not initialized.")
     if register:
-        buffer_console.print(f"\nRegister registered commands:\n")
+        buffer_console.print("\nRegister registered commands:\n")
         for command_name in register.commands.keys():
             buffer_console.print(f"\t{command_name}: {register.commands[command_name][0].__name__} (permission: {register.commands[command_name][1]})")
     else:
-        buffer_console.print(f"\U000026A0 Register not initialized.")
+        buffer_console.print("\U000026A0 Register not initialized.")
     if perm_system:
-        buffer_console.print(f"\nPerm System registered permissions:\n")
+        buffer_console.print("\nPerm System registered permissions:\n")
         for perm_name in perm_system.registered_perms.keys():
             buffer_console.print(f"\t{perm_name}: {perm_system.registered_perms[perm_name]}")
     else:
-        buffer_console.print(f"\U000026A0 Perm System not initialized.")
+        buffer_console.print("\U000026A0 Perm System not initialized.")
 
     buffer_console.print(   "-------------------------------------------------------------------")
     
     # 打印插件信息
-    buffer_console.print(f"\n------------------------------Plugins------------------------------")
+    buffer_console.print("\n------------------------------Plugins------------------------------")
 
     if config:
         plugin_dir = str(config.get("plugin_dir", PLUGIN_DIR))
@@ -156,7 +154,7 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
     buffer_console.print(   "-------------------------------------------------------------------")
 
     # 捕获异常并打印详细信息
-    buffer_console.print(f"\n-------------------------Exception Details-------------------------")
+    buffer_console.print("\n-------------------------Exception Details-------------------------")
     buffer_console.print(f"Exception Type: {exc_type.__name__}")
     buffer_console.print(f"Exception Message: {exc_value}\n")
     
@@ -178,7 +176,7 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
     try:
         buffer_console.print(f"Crash Top Location: {exc_traceback.tb_frame.f_code.co_filename}:{exc_traceback.tb_lineno}")
     except AttributeError:
-        buffer_console.print(f"Crash Top Location: Unknown")
+        buffer_console.print("Crash Top Location: Unknown")
 
     # 打印可能的错误位置
     if possible_locations := parse_traceback_lines(traceback.format_tb(exc_traceback)):
@@ -218,7 +216,7 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
     buffer_console.print("\n--------------------------Folder Structure--------------------------")
 
     buffer_console.print(f"Working Dir: {os.getcwd()}")
-    for root, dirs, files in walklevel(".", max_depth=2):
+    for root, _, files in walklevel(".", max_depth=2):
         level = root.replace(os.getcwd(), '').count(os.sep)
         indent = '\t|' + '\t|'*(level-1)
         buffer_console.print(f"{indent}\t{os.path.basename(root)}/")
@@ -268,6 +266,3 @@ try:
 except Exception as e:
     logger.critical(f"[red]Failed to initialize Coral Core.[/]")
     raise e
-
-
-

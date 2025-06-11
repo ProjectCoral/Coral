@@ -5,7 +5,14 @@ import threading
 import queue
 import time
 from typing import Union
-from core.protocol import MessageRequest, MessageEvent, NoticeEvent, CommandEvent, MessageChain, MessageSegment
+from .protocol import (
+    MessageRequest,
+    MessageEvent,
+    NoticeEvent,
+    CommandEvent,
+    MessageChain,
+    MessageSegment
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,22 +55,15 @@ class EventBus:
                 result = await handler(event)
                 if result:  # 处理器可以返回结果中断传播
                     logger.debug(f"Event handler {handler.__name__} returns result: {result}")
-                    if isinstance(result, list):
-                        for r in result:
-                            r = convert_to_protocol(event, r) if isinstance(r, str) else r
-                            self._result_queue.put(r)
-                    else:
-                        result = convert_to_protocol(event, result) if isinstance(result, str) else result
-                        self._result_queue.put(result)
-                    return
+                    break
             except Exception as e:
                 logger.error(f"Event handler error: {e}")
         if isinstance(result, list):
             for r in result:
-                r = convert_to_protocol(event, r) if isinstance(r, str) else r
+                r = self.convert_to_protocol(event, r) if isinstance(r, str) else r
                 self._result_queue.put(r) if r is not None else None
         else:
-            result = convert_to_protocol(event, result) if isinstance(result, str) else result
+            result = self.convert_to_protocol(event, result) if isinstance(result, str) else result
             self._result_queue.put(result) if result is not None else None
 
 
