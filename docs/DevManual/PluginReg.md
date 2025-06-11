@@ -4,7 +4,7 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
 
 无论哪种，都需要在 `_init_.py` 中调用 `register` 类的方法 / 使用 `Coral` 内部装饰器，并传入相应的参数。
 
-> [!important] 
+> [!important]
 > 在25/6/8的更新中，完全重构了注册方式，原先的[注册方式](PluginReg_old.md)仍然可以继续使用，但不再推荐。
 
 返回的数据格式请参考 [Protocol 文档](Protocol.md)。

@@ -3,16 +3,19 @@ import logging
 import json
 from typing import Any, Dict
 from core.driver import BaseDriver
+from core.adapter import BaseAdapter
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import uvicorn
 
 logger = logging.getLogger(__name__)
 
-class Onebotv11Driver(BaseDriver):
+PROTOCOL = 'onebotv11'
+
+class ReversewsDriver(BaseDriver):
     """反向WebSocket驱动器（FastAPI实现）"""
     
-    def __init__(self, driver_name: str, config: Dict[str, Any]):
-        super().__init__(driver_name, config)
+    def __init__(self, adapter: BaseAdapter, config: Dict[str, Any]):
+        super().__init__(adapter, config)
         self.websocket = None
         self.path = config.get('path', '/ws/api')
         self.port = config.get('port', 21050)

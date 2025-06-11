@@ -55,8 +55,13 @@ class Coral:
 
         logger.info("Loading adapters and drivers...")
 
-        await driver_manager.load_drivers()
         await adapter_manager.load_adapters()
+        await driver_manager.load_drivers()
+
+        logger.info("Initializing nonebot2 compatibility layer...")
+
+        from core.nonebot_compat import init_nonebot_compat
+        init_nonebot_compat(self.event_bus, self.register, self.perm_system)
 
         await self.event_bus.publish(    
             GenericEvent(

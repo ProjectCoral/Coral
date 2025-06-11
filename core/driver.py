@@ -2,6 +2,7 @@ import os
 import logging
 import importlib
 import asyncio
+from .adapter import BaseAdapter
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, List
 
@@ -10,16 +11,11 @@ logger = logging.getLogger(__name__)
 class BaseDriver(ABC):
     """驱动器基类 - 处理与平台的实际通信"""
     
-    def __init__(self, driver_name: str, config: Dict[str, Any]):
-        self.name = driver_name
+    def __init__(self, adapter: BaseAdapter, config: Dict[str, Any]):
         self.config = config
-        self.adapter = None
-        self._running = False
-    
-    def set_adapter(self, adapter):
-        """设置关联的适配器"""
         self.adapter = adapter
-    
+        self._running = False
+        self.adapter.add_driver(self)
     @abstractmethod
     async def start(self):
         """启动驱动器"""
@@ -45,14 +41,14 @@ class BaseDriver(ABC):
 class DriverManager:
     """驱动器管理器 - 管理驱动器的生命周期"""
     
-    def __init__(self, config):
+    def __init__(self, config, adapter_manager):
         self.config = config
         self.drivers = {}
         self._running = False
+        self.adapter_manager = adapter_manager
     
-    def register_driver(self, driver: BaseDriver):
+    def register_driver(self, driver: BaseDriver, driver_name: str):
         """注册驱动器"""
-        driver_name = driver.name.lower()
         if driver_name in self.drivers:
             logger.warning(f"Driver {driver_name} already registered, overwriting")
         
@@ -94,7 +90,15 @@ class DriverManager:
                 if not issubclass(driver_class, BaseDriver):
                     logger.warning(f"Found driver {driver_name} but it is not a subclass of BaseDriver, skipping...")
                 driver_config = self.config.get(driver_name + "_driver", {})
-                self.register_driver(driver_class(driver_name, driver_config))
+                driver_protocol = getattr(driver_obj, "PROTOCOL", None)
+                if not driver_protocol:
+                    logger.warning(f"Driver {driver_name} did not specify a protocol, skipping...")
+                    continue
+                pend_adapter = self.adapter_manager.get_adapter(driver_protocol)
+                if not pend_adapter:
+                    logger.warning(f"Driver {driver_name} requires adapter {driver_protocol}, but it is not registered, skipping...")
+                    continue
+                self.register_driver(driver_class(pend_adapter, driver_config), driver_name)
             except Exception as e:
                 logger.exception(f"Failed to load driver {driver_name}: {e}")
                 continue

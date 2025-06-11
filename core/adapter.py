@@ -2,20 +2,17 @@ import os
 import logging
 import importlib
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 from .protocol import MessageEvent, ActionRequest, MessageRequest
-from .driver import BaseDriver
 
 logger = logging.getLogger(__name__)
 
 class BaseAdapter(ABC):
     """适配器基类 - 处理平台消息的转换和路由"""
     
-    def __init__(self, driver: BaseDriver, adapter_name: str, config: Dict[str, Any]):
-        self.name = adapter_name
+    def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.driver = driver
-        self.driver.set_adapter(self)
+        self.drivers: List[ABC] = []
         self.event_bus = None
         self._handlers = {}
     
@@ -23,6 +20,14 @@ class BaseAdapter(ABC):
         """设置事件总线"""
         self.event_bus = event_bus
     
+    def add_driver(self, driver: ABC):
+        """添加驱动器"""
+        self.drivers.append(driver)
+
+    async def send_to_driver(self, data: Dict[str, Any]):
+        for driver in self.drivers:
+            await driver.send_action(data)
+
     @abstractmethod
     async def handle_incoming(self, raw_data: Dict[str, Any]):
         """处理来自驱动器的原始数据"""
@@ -57,24 +62,22 @@ class BaseAdapter(ABC):
 class AdapterManager:
     """适配器管理器 - 加载和协调多个适配器"""
     
-    def __init__(self, event_bus, config, driver_manager):
+    def __init__(self, event_bus, config):
         self.adapters = {}
         self.event_bus = event_bus
         self.config = config
-        self.driver_manager = driver_manager
 
         self.event_bus.subscribe(ActionRequest, self.handle_action)
         self.event_bus.subscribe(MessageRequest, self.handle_message)
     
-    def register_adapter(self, adapter: BaseAdapter):
+    def register_adapter(self, adapter: BaseAdapter, adapter_protocol: str):
         """注册适配器"""
-        adapter_name = adapter.name.lower()
-        if adapter_name in self.adapters:
-            logger.warning(f"Adapter {adapter_name} already registered, overwriting")
+        if adapter_protocol in self.adapters:
+            logger.warning(f"Adapter {adapter_protocol} already registered, overwriting")
         
         adapter.set_event_bus(self.event_bus)
-        self.adapters[adapter_name] = adapter
-        logger.debug(f"Adapter registered: {adapter_name}")
+        self.adapters[adapter_protocol] = adapter
+        logger.debug(f"Adapter registered: {adapter_protocol}")
     
     def get_adapter(self, adapter_name: str) -> Optional[BaseAdapter]:
         """获取适配器实例"""
@@ -106,14 +109,18 @@ class AdapterManager:
                 if not issubclass(adapter_class, BaseAdapter):
                     logger.warning(f"Found adapter {adapter_name} but it is not a subclass of BaseAdapter, skipping...")
                 adapter_config = self.config.get(adapter_name + "_adapter", {})
-                pend_driver = self.driver_manager.get_driver(adapter_config.get("driver", adapter_name))
-                if pend_driver is None:
-                    logger.warning(f"No driver found for adapter {adapter_name}, skipping...")
+                adapter_protocol = getattr(adapter_obj, "PROTOCOL", None)
+                if not adapter_protocol:
+                    logger.warning(f"Adapter {adapter_name} did not specify a protocol, skipping...")
                     continue
-                adapter_obj = adapter_class(pend_driver, adapter_name, adapter_config)
+                adapter_obj = adapter_class(adapter_config)
                 adapter_obj.set_event_bus(self.event_bus)
-                self.register_adapter(adapter_obj)
+                self.register_adapter(adapter_obj, str(adapter_protocol))
             except Exception as e:
                 logger.exception(f"Error loading adapter {adapter_name}: {e}")
                 continue
         logger.info(f"Loaded {len(self.adapters)} adapters.")
+
+    def get_adapter(self, protocol: str) -> Optional[BaseAdapter]:
+        """获取指定协议的适配器"""
+        return self.adapters.get(protocol.lower())

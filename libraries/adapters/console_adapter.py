@@ -8,11 +8,13 @@ from core.protocol import MessageEvent, CommandEvent, MessageChain, MessageSegme
 
 logger = logging.getLogger(__name__)
 
+PROTOCOL = "console"
+
 class ConsoleAdapter(BaseAdapter):
     """控制台适配器 - 处理控制台消息转换"""
     
-    def __init__(self, driver: BaseDriver, name: str = "console", config: Dict[str, Any] = {}):
-        super().__init__(driver, name, config)
+    def __init__(self, config: Dict[str, Any] = {}):
+        super().__init__(config)
     
     async def handle_incoming(self, raw_data: Dict[str, Any]):
         """处理控制台输入"""
@@ -50,7 +52,7 @@ class ConsoleAdapter(BaseAdapter):
         """处理消息回复到控制台"""
         # 将消息内容输出到控制台
         plain_text = message.message.to_plain_text()
-        await self.driver.send_action({
+        await self.send_to_driver({
             "type": "message",
             "message": plain_text
         })

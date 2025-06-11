@@ -3,16 +3,17 @@ import json
 from typing import Any, Dict, Union
 from core.protocol import MessageEvent, ActionRequest, MessageRequest, MessageChain, MessageSegment, UserInfo, GroupInfo, NoticeEvent, BotResponse
 from core.adapter import BaseAdapter
-from core.driver import BaseDriver
 from Coral import config as coral_config
 
 logger = logging.getLogger(__name__)
 
+PROTOCOL = "onebotv11"
+
 class Onebotv11Adapter(BaseAdapter):
     """OneBot V11协议适配器"""
     
-    def __init__(self, driver: BaseDriver, adapter_name: str, config: Dict[str, Any]):
-        super().__init__(driver, adapter_name, config)
+    def __init__(self, config: Dict[str, Any]):
+        super().__init__(config)
         self.self_id = coral_config.get('self_id', '')
         logger.info(f"OneBotV11 Adapter initialized for bot: {self.self_id}")
     
@@ -60,7 +61,7 @@ class Onebotv11Adapter(BaseAdapter):
             message_chain.append(MessageSegment.text(event['message']))
         
         user = UserInfo(
-            platform=self.name,
+            platform=self.protocol,
             user_id=str(event.get('user_id', '')),
             nickname=event.get('sender', {}).get('nickname', '')
         )
@@ -68,14 +69,14 @@ class Onebotv11Adapter(BaseAdapter):
         group = None
         if 'group_id' in event:
             group = GroupInfo(
-                platform=self.name,
+                platform=self.protocol,
                 group_id=str(event['group_id']),
                 name=event.get('group_name', '')
             )
         
         return MessageEvent(
             event_id=str(event.get('message_id', event.get('time', 0))),
-            platform=self.name,
+            platform=self.protocol,
             self_id=self.self_id,
             message=message_chain,
             user=user,
@@ -87,27 +88,27 @@ class Onebotv11Adapter(BaseAdapter):
         """处理通知事件（保持OneBot原生类型）"""
         notice_type = event.get('notice_type')
         user = UserInfo(
-            platform=self.name,
+            platform=self.protocol,
             user_id=str(event.get('user_id', ''))
         )
 
         group = None
         if 'group_id' in event:
             group = GroupInfo(
-                platform=self.name,
+                platform=self.protocol,
                 group_id=str(event['group_id'])
                 )
         
         operator = None
         if 'operator_id' in event:
             operator = UserInfo(
-                platform=self.name,
+                platform=self.protocol,
                 user_id=str(event['operator_id'])
             )
         
         return NoticeEvent(
             event_id=f"{event['time']}_{notice_type}",
-            platform=self.name,
+            platform=self.protocol,
             self_id=self.self_id,
             type=notice_type,  # 直接使用OneBot原生类型
             user=user,
@@ -129,7 +130,7 @@ class Onebotv11Adapter(BaseAdapter):
             api_request['params']['self_id'] = self.self_id
             
             # 通过驱动器发送请求
-            await self.driver.send_action(api_request)
+            await self.send_to_driver(api_request)
             
             # 返回成功响应
             return BotResponse(success=True, message="Action sent")
@@ -183,7 +184,7 @@ class Onebotv11Adapter(BaseAdapter):
             }
             
             # 通过驱动器发送请求
-            await self.driver.send_action(api_request)
+            await self.send_to_driver(api_request)
             
             # 返回成功响应
             return BotResponse(success=True, message="Message sent")
