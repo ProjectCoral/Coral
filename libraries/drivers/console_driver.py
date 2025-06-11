@@ -2,6 +2,7 @@ import asyncio
 import logging
 from typing import Dict, Any
 from core.driver import BaseDriver
+from core.adapter import BaseAdapter
 from prompt_toolkit import PromptSession
 from prompt_toolkit.styles import Style
 import threading
@@ -19,12 +20,13 @@ prompt_message = [
     ('class:pound',    '> '), # pound对应'>'
 ]
 
+PROTOCOL = "console"
 
 class ConsoleDriver(BaseDriver):
     """控制台驱动器 - 处理控制台输入输出"""
     
-    def __init__(self, name: str = "console", config: Dict[str, Any] = {}):
-        super().__init__(name, config)
+    def __init__(self, adapter: BaseAdapter, config: Dict[str, Any] = {}):
+        super().__init__(adapter, config)
         self.input_queue = asyncio.Queue()
         self.prompt_session = PromptSession(prompt_message, style=prompt_style)
     
