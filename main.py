@@ -83,10 +83,10 @@ for root, dirs, files in os.walk('./'):
 
 if __name__ == '__main__':
     logging.info("[green]Starting Coral...[/]")
-    try:
-        from Coral import Coral
-        Coral()
-    except Exception as e:
-        logging.exception("[red]An error occurred: {}[/]".format(str(e)))
-        logging.critical("[bold red blink]Oops, Coral has crashed.\U0001F605 Please check the logs for more information.[/]")
-        os._exit(1)
+    # try:
+    from Coral import Coral
+    Coral()
+    # except Exception as e:
+    #     logging.exception("[red]An error occurred: {}[/]".format(str(e)))
+    #     logging.critical("[bold red blink]Oops, Coral has crashed.\U0001F605 Please check the logs for more information.[/]")
+    os._exit(1)

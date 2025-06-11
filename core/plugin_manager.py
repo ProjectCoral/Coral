@@ -6,18 +6,21 @@ import importlib.util
 import logging
 import asyncio
 
+PLUGINMANAGER_VERSION = "250608_early_developement"
+
 logger = logging.getLogger(__name__)
 
 class PluginManager:
     register = None
     config = None
     perm_system = None
+    plugin_dir = "./plugins"
 
-    def __init__(self, register, config, perm_system):
+    def __init__(self, register, config, perm_system, plugin_dir="./plugins"):
         self.config = config
         self.perm_system = perm_system
-        self.plugin_dir = self.config.get("plugin_dir", "./plugins")
-        self.config.set("pluginmanager_version", "250608_early_developement")
+        self.plugin_dir = self.config.get("plugin_dir", plugin_dir)
+        self.config.set("pluginmanager_version", PLUGINMANAGER_VERSION)
         self.pluginmanager_version = self.config.get("pluginmanager_version")
         self.pluginmanager_meta = 250606
         self.register = register

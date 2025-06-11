@@ -8,31 +8,20 @@ from pyfiglet import Figlet
 from colorama import Fore
 from typing import Union, List
 
-from core.config import Config
-from core.register import Register
-from core.plugin_manager import PluginManager
-from core.perm_system import PermSystem
-from core.event_bus import EventBus
-from core.adapter import AdapterManager
-from core.driver import DriverManager
-
 from core.protocol import *
+from core.core import (
+    config,
+    event_bus,
+    register,
+    perm_system,
+    plugin_manager,
+    driver_manager,
+    adapter_manager,
+    CORAL_VERSION
+)
 
 logger = logging.getLogger(__name__)
 
-plugin_dir = "./plugins"
-config_file = "./config.json"
-try:
-    config = Config(config_file)
-    event_bus = EventBus()
-    register = Register(event_bus)
-    perm_system = PermSystem(register, config)
-    plugin_manager = PluginManager(register, config, perm_system)
-    driver_manager = DriverManager(config)
-    adapter_manager = AdapterManager(event_bus, config, driver_manager)
-except Exception as e:
-    logger.critical(f"[red]Failed to initialize Coral Core.[/]")
-    raise e
 
 import utils.commands
 import utils.install_requirements
@@ -58,7 +47,7 @@ class Coral:
 
         self.register.load_buildin_plugins = self.register_buildin_plugins
 
-        self.config.set("coral_version", "250608_early_development")
+        self.config.set("coral_version", CORAL_VERSION)
 
         self.register_buildin_plugins()
 
