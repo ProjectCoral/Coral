@@ -42,7 +42,7 @@ J <--> K[platform]
 - adapter_manager: 适配器管理器，用于管理适配器。
 - driver_manager: 驱动管理器，用于管理驱动。
 
-> 如果你要开发插件，请阅读 [插件开发指南](DevManual/PluginDev.md)。
+> 如果你要开发插件，请阅读 [插件开发指南](PluginDev.md)。
 
 ## 编写文档
 

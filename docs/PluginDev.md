@@ -56,7 +56,7 @@
         from Coral import event_bus, register, config, perm_system, adapter_manager, driver_manager, ...
         ```
 
-    > [!tip]
+    > [!note]
     >
     > - 我不想使用 Coral 提供的方法，但是对 nonebot2 的注册方式很熟悉。
     >
