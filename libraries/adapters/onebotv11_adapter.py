@@ -61,7 +61,7 @@ class Onebotv11Adapter(BaseAdapter):
             message_chain.append(MessageSegment.text(event['message']))
         
         user = UserInfo(
-            platform=self.protocol,
+            platform=PROTOCOL,
             user_id=str(event.get('user_id', '')),
             nickname=event.get('sender', {}).get('nickname', '')
         )
@@ -69,14 +69,14 @@ class Onebotv11Adapter(BaseAdapter):
         group = None
         if 'group_id' in event:
             group = GroupInfo(
-                platform=self.protocol,
+                platform=PROTOCOL,
                 group_id=str(event['group_id']),
                 name=event.get('group_name', '')
             )
         
         return MessageEvent(
             event_id=str(event.get('message_id', event.get('time', 0))),
-            platform=self.protocol,
+            platform=PROTOCOL,
             self_id=self.self_id,
             message=message_chain,
             user=user,
@@ -88,27 +88,27 @@ class Onebotv11Adapter(BaseAdapter):
         """处理通知事件（保持OneBot原生类型）"""
         notice_type = event.get('notice_type')
         user = UserInfo(
-            platform=self.protocol,
+            platform=PROTOCOL,
             user_id=str(event.get('user_id', ''))
         )
 
         group = None
         if 'group_id' in event:
             group = GroupInfo(
-                platform=self.protocol,
+                platform=PROTOCOL,
                 group_id=str(event['group_id'])
                 )
         
         operator = None
         if 'operator_id' in event:
             operator = UserInfo(
-                platform=self.protocol,
+                platform=PROTOCOL,
                 user_id=str(event['operator_id'])
             )
         
         return NoticeEvent(
             event_id=f"{event['time']}_{notice_type}",
-            platform=self.protocol,
+            platform=PROTOCOL,
             self_id=self.self_id,
             type=notice_type,  # 直接使用OneBot原生类型
             user=user,
