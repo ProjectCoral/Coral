@@ -5,9 +5,17 @@ import threading
 import queue
 import time
 from typing import Union
-from core.protocol import MessageRequest, MessageEvent, NoticeEvent, CommandEvent, MessageChain, MessageSegment
+from .protocol import (
+    MessageRequest,
+    MessageEvent,
+    NoticeEvent,
+    CommandEvent,
+    MessageChain,
+    MessageSegment,
+)
 
 logger = logging.getLogger(__name__)
+
 
 class EventBus:
     def __init__(self):
@@ -40,46 +48,46 @@ class EventBus:
             event = await middleware(event)
             if event is None:  # 中间件终止传播
                 return None
-        
+
         # 执行事件处理器
         result = None
         for handler, _ in self._subscribers[type(event)]:
             try:
                 result = await handler(event)
                 if result:  # 处理器可以返回结果中断传播
-                    logger.debug(f"Event handler {handler.__name__} returns result: {result}")
-                    if isinstance(result, list):
-                        for r in result:
-                            r = convert_to_protocol(event, r) if isinstance(r, str) else r
-                            self._result_queue.put(r)
-                    else:
-                        result = convert_to_protocol(event, result) if isinstance(result, str) else result
-                        self._result_queue.put(result)
-                    return
+                    logger.debug(
+                        f"Event handler {handler.__name__} returns result: {result}"
+                    )
+                    break
             except Exception as e:
                 logger.error(f"Event handler error: {e}")
         if isinstance(result, list):
             for r in result:
-                r = convert_to_protocol(event, r) if isinstance(r, str) else r
+                r = self.convert_to_protocol(event, r) if isinstance(r, str) else r
                 self._result_queue.put(r) if r is not None else None
         else:
-            result = convert_to_protocol(event, result) if isinstance(result, str) else result
+            result = (
+                self.convert_to_protocol(event, result)
+                if isinstance(result, str)
+                else result
+            )
             self._result_queue.put(result) if result is not None else None
 
-
-    def convert_to_protocol(self, event: Union[MessageEvent, NoticeEvent, CommandEvent], result: str) -> MessageRequest:
+    def convert_to_protocol(
+        self, event: Union[MessageEvent, NoticeEvent, CommandEvent], result: str
+    ) -> MessageRequest:
         """将事件和结果转换为协议格式"""
-        logger.warning(f"Result returned a string, which is deprecated and might be broken in a future version.")
+        logger.warning(
+            f"Result returned a string, which is deprecated and might be broken in a future version."
+        )
         return MessageRequest(
             platform=event.platform,
             event_id=event.event_id,
             self_id=event.self_id,
             message=MessageChain([MessageSegment(type="text", data=result)]),
             user=event.user,
-            group=event.group if hasattr(event, "group") else None
+            group=event.group if hasattr(event, "group") else None,
         )
-
-
 
     def add_middleware(self, middleware: callable):
         """添加中间件"""

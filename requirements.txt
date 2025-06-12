@@ -6,3 +6,5 @@ pyfiglet
 colorama
 prompt_toolkit
 rich
+psutil
+flet[all]==0.28.3
