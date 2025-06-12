@@ -47,11 +47,33 @@
 启动完成后， Coral 将会启动控制台，你可以通过控制台执行各类命令。
 
 目前 Coral 内置的控制台命令有：
+
 - `help`：查看帮助信息
 - `status`：查看机器人状态
 - `plugins`：查看已加载的插件
 - `perms`：权限管理(详情请参阅 [权限系统用户文档](https://github.com/ProjectCoral/Coral/blob/main/docs/UserManual/PermSystem.md))
 
+## dashboard 管理
+
+Coral 还提供了一个 dashboard 管理界面，其由 Python Flet 实现，你可以通过它管理机器人。
+
+第一次启动 Coral 后，`config.json` 内会生成一个 `dashboard` 字典，其中包含了 dashboard 管理的相关配置。
+
+```json
+{
+    "dashboard": {
+        "enabled": true,
+        "listen": false,
+        "port": 9000
+    }
+}
+```
+
+- `enabled`：是否启用 dashboard 管理。
+- `listen`：是否开启 dashboard 监听服务。
+- `port`：dashboard 监听端口，默认为 `9000`。
+
+打开浏览器，访问 `http://localhost:9000` 即可访问 dashboard 管理界面。
 
 ## 插件
 

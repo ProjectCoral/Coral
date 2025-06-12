@@ -9,6 +9,7 @@ main_config_template = {
     "self_id": 123456789,
 }
 
+
 class Config:
     main_config = "./config.json"
 

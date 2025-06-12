@@ -150,7 +150,7 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
     if plugin_manager:
         buffer_console.print(f"\nLoaded plugins:\n")
         for plugin in plugin_manager.plugins:
-            buffer_console.print(f"\t|\t{plugin.name}")
+            buffer_console.print(f"\t|\t{plugin}")
     buffer_console.print(   "-------------------------------------------------------------------")
 
     # 捕获异常并打印详细信息
