@@ -9,6 +9,7 @@ from core.protocol import (
     CommandEvent as CoreCommandEvent, 
     MessageChain as CoreMessageChain, 
     MessageSegment as CoreMessageSegment,
+    MessageRequest as CoreMessageRequest,
     GenericEvent,
     MessageRequest,
     MessageBase  # 新增导入
@@ -25,7 +26,7 @@ class Bot:
         self.adapter = adapter_name
         self.config = {}
     
-    async def send(self, event: CoreMessageEvent, message: Union[str, CoreMessageChain], **kwargs):
+    async def send(self, event: Union[CoreMessageEvent, CoreNoticeEvent, CoreCommandEvent], message: Union[str, CoreMessageChain], **kwargs):
         if isinstance(message, str):
             message = CoreMessageChain([CoreMessageSegment.text(message)])
         
@@ -54,7 +55,7 @@ class Event(MessageBase):  # 继承MessageBase
             self.post_type = "command"
 
     def get_user_id(self) -> str:
-        return self.raw_event.user.user_id if hasattr(self.raw_event, 'user') else ""
+        return self.raw_event.user.user_id if self.raw_event.user else ""
     
     def get_session_id(self) -> str:
         if hasattr(self.raw_event, 'group') and self.raw_event.group:
@@ -62,7 +63,7 @@ class Event(MessageBase):  # 继承MessageBase
         return f"private_{self.get_user_id()}"
     
     def get_message(self) -> CoreMessageChain:
-        if hasattr(self.raw_event, 'message'):
+        if isinstance(self.raw_event, CoreMessageEvent) and hasattr(self.raw_event, 'message'):
             return self.raw_event.message
         return CoreMessageChain()
 
@@ -76,7 +77,7 @@ class MessageEvent(Event, MessageBase):  # 双重继承
         
     def is_tome(self) -> bool:
         return any(
-            seg.type == "at" and seg.data["user_id"] == self.self_id 
+            seg.type == "at" and isinstance(seg.data, Dict) and seg.data["user_id"] == self.self_id 
             for seg in self.message.segments
         )
 
@@ -156,9 +157,9 @@ class Matcher:
                 logger.error(f"Error in matcher handler: {e}")
 
 class EventBusManager:
-    event_bus: Optional[EventBus] = None
-    register: Optional[Register] = None
-    perm_system: Optional[PermSystem] = None
+    event_bus: EventBus
+    register: Register
+    perm_system: PermSystem
     matchers: Dict[Type, List[Matcher]] = {}
     
     @classmethod
@@ -227,7 +228,7 @@ class EventBusManager:
         if not cls.event_bus:
             return
         
-        msg_request = MessageRequest(
+        msg_request = CoreMessageRequest(
             platform=platform,
             event_id=event_id,
             self_id=self_id,
@@ -330,7 +331,7 @@ def permission_control(perm: Union[str, List[str]]) -> Callable:
             else:
                 logger.warning(f"User {user_id} lacks permission: {perm}")
                 if isinstance(event, MessageEvent):
-                    await bot.send(event, "权限不足")  # 传递kwargs
+                    await bot.send(event.raw_event, "权限不足")  # 传递kwargs
         
         return wrapper
     return decorator

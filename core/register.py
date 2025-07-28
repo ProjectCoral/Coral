@@ -3,7 +3,7 @@ import logging
 import datetime
 import random
 import traceback
-from typing import Union, List
+from typing import Union, List, Callable
 from .future import RegisterFuture
 from .protocol import (
     CommandEvent,
@@ -29,13 +29,12 @@ class Register:
         self.commands = {}  # 命令名: (handler, permission)
         self.command_descriptions = {}
         self.functions = {}
-        self.load_buildin_plugins: callable = None
+        self.load_buildin_plugins: Callable
         self.future = RegisterFuture(self)
         self.crash_times = {}
         self._event_handlers = defaultdict(
             dict
         )  # event_name: handler_func -> wrapper_func
-        self.perm_system = None
 
         self.event_bus.subscribe(CommandEvent, self.execute_command)
 
@@ -44,7 +43,7 @@ class Register:
         logger.info("Permission system has been hooked with Register.")
 
     def register_event(
-        self, event_name: str, listener_name: str, function: callable, priority: int = 1
+        self, event_name: str, listener_name: str, function: Callable, priority: int = 1
     ):
         if (
             event_name in self._event_handlers
@@ -76,7 +75,7 @@ class Register:
         self,
         command_name: str,
         description: str,
-        function: callable,
+        function: Callable,
         permission: Union[str, List, None] = None,
     ):
         if command_name in self.commands:
@@ -86,7 +85,7 @@ class Register:
         self.commands[command_name] = function, permission
         self.command_descriptions[command_name] = description
 
-    def register_function(self, function_name: str, function: callable):
+    def register_function(self, function_name: str, function: Callable):
         if function_name in self.functions:
             logger.error(
                 f"[red bold]Function [/]{function_name}[red bold] already registered[/]"

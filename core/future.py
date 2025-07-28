@@ -9,7 +9,7 @@ class RegisterFuture:
         logger.info(f"Loaded future feature for Register.")
 
     def register_command(
-        self, command_name: str, description: str, permission: str = None
+        self, command_name: str, description: str, permission: str | None = None
     ):
         def decorator(func):
             self.register.register_command(command_name, description, func, permission)

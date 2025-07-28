@@ -18,14 +18,6 @@ CORAL_VERSION = "250610_early_development"
 PLUGIN_DIR = "./plugins"
 CONFIG_FILE = "./config.json"
 
-config = None
-event_bus = None
-register = None
-perm_system = None
-plugin_manager = None
-driver_manager = None
-adapter_manager = None
-
 def walklevel(path=".", max_depth=None):
     # 初始化队列和层级计数器
     queue = [(path, 0)]
@@ -109,19 +101,19 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
     buffer_console.print(f"PluginManager Version: {PLUGINMANAGER_VERSION}")
     buffer_console.print(f"Protocol Version: {PROTOCOL_VERSION}")
 
-    if event_bus:
+    if 'event_bus' in locals():
         buffer_console.print("\nEvent Bus subscribed events:\n")
         for event_type in event_bus._subscribers.keys():
             buffer_console.print(f"\t{event_type.__name__}: {[handler[0].__name__ if isinstance(handler, tuple) else handler.__name__ for handler in event_bus._subscribers[event_type]]}")
     else:
         buffer_console.print("\n\U000026A0 Event Bus not initialized.")
-    if register:
+    if 'register' in locals():
         buffer_console.print("\nRegister registered commands:\n")
         for command_name in register.commands.keys():
             buffer_console.print(f"\t{command_name}: {register.commands[command_name][0].__name__} (permission: {register.commands[command_name][1]})")
     else:
         buffer_console.print("\U000026A0 Register not initialized.")
-    if perm_system:
+    if 'perm_system' in locals():
         buffer_console.print("\nPerm System registered permissions:\n")
         for perm_name in perm_system.registered_perms.keys():
             buffer_console.print(f"\t{perm_name}: {perm_system.registered_perms[perm_name]}")
@@ -133,7 +125,7 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
     # 打印插件信息
     buffer_console.print("\n------------------------------Plugins------------------------------")
 
-    if config:
+    if 'config' in locals():
         plugin_dir = str(config.get("plugin_dir", PLUGIN_DIR))
     else:
         plugin_dir = PLUGIN_DIR
@@ -147,7 +139,7 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
     else:
         buffer_console.print(f"\U000026A0 Plugin Directory not found.")
 
-    if plugin_manager:
+    if 'plugin_manager' in locals():
         buffer_console.print(f"\nLoaded plugins:\n")
         for plugin in plugin_manager.plugins:
             buffer_console.print(f"\t|\t{plugin}")

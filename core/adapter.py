@@ -2,8 +2,8 @@ import os
 import logging
 import importlib
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, List
-from .protocol import MessageEvent, ActionRequest, MessageRequest
+from typing import Any, Dict, Optional, List, Union
+from .protocol import MessageEvent, ActionRequest, MessageRequest, NoticeEvent, BotResponse
 
 logger = logging.getLogger(__name__)
 
@@ -35,16 +35,16 @@ class BaseAdapter(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def convert_to_protocol(self, event: Any):
+    def convert_to_protocol(self, event: Any) -> Union[MessageEvent, NoticeEvent, None]:
         """将平台原生事件转换为协议事件"""
 
     @abstractmethod
-    async def handle_outgoing_action(self, action: ActionRequest):
+    async def handle_outgoing_action(self, action: ActionRequest) -> Union[BotResponse, None]:
         """处理发往平台的主动动作"""
         raise NotImplementedError
 
     @abstractmethod
-    async def handle_outgoing_message(self, messgage: MessageRequest):
+    async def handle_outgoing_message(self, message: MessageRequest) -> Union[BotResponse, None]:
         """处理消息回复"""
         raise NotImplementedError
 
@@ -109,6 +109,7 @@ class AdapterManager:
             if f.endswith("_adapter.py")
         ]
         for module in adapter_modules:
+            adapter_name = None
             try:
                 adapter_name = module.split("_adapter")[0]
                 adapter_obj = importlib.import_module(

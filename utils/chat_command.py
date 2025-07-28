@@ -10,9 +10,6 @@ def register_plugin():
     perm_system.register_perm("chat_command.execute", "Allows the user to execute commands in chat")
 
 class ChatCommand:
-    register = None
-    perm_system = None
-    
     def __init__(self, register, perm_system):
         self.register = register
         self.perm_system = perm_system

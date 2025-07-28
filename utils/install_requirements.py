@@ -13,8 +13,6 @@ def register_plugin():
     register.register_function('check_pip_requirements', InstallRequirements(config).check_pip_requirements)
 
 class InstallRequirements:
-    config = None
-
     def __init__(self, config):
         self.config = config
         self.progress = Progress(

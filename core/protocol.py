@@ -99,7 +99,7 @@ class MessageChain(MessageBase):
 
     def to_plain_text(self) -> str:
         """转换为纯文本（忽略非文本消息段）"""
-        return "".join(seg.data for seg in self.segments if seg.type == "text")
+        return "".join(seg.data for seg in self.segments if seg.type == "text" and isinstance(seg.data, str))
 
 
 @dataclass
@@ -125,7 +125,7 @@ class MessageEvent(Event, MessageBase):
     def ismetentioned(self) -> bool:
         """判断是否被@"""
         return any(
-            seg.type == "at" and seg.data["user_id"] == str(self.self_id)
+            seg.type == "at" and isinstance(seg.data, dict) and seg.data["user_id"] == str(self.self_id)
             for seg in self.message.segments
         )
 
@@ -185,7 +185,7 @@ class CommandEvent(Event, MessageBase):
 
 
 @dataclass
-class BotResponse(MessageBase):
+class BotResponse(Event, MessageBase):
     """机器人响应"""
 
     success: bool  # 是否成功
@@ -195,7 +195,7 @@ class BotResponse(MessageBase):
 
 
 @dataclass
-class MessageRequest(MessageBase):
+class MessageRequest(Event, MessageBase):
     """回复消息结构"""
 
     platform: str  # 平台名称
@@ -209,7 +209,7 @@ class MessageRequest(MessageBase):
 
 
 @dataclass
-class ActionRequest(MessageBase):
+class ActionRequest(Event, MessageBase):
     """主动动作请求"""
 
     platform: str  # 平台名称
