@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import subprocess
 import logging
@@ -53,15 +54,19 @@ if not os.path.exists("config.json"):
     for line in lines:
         if line.startswith("#") or line.strip() == "":
             continue
+        package_name = re.split('>=|>|<=|<|==|!=', line.strip())[0].strip()
+
+        if '[' in package_name and package_name.endswith(']'):
+            package_name = package_name.split('[')[0].strip()
         try:
             subprocess.check_call(
-                [sys.executable, "-m", "pip", "show", line.strip()],
+                [sys.executable, "-m", "pip", "show", package_name],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
         except subprocess.CalledProcessError:
             logging.critical(
-                "[[bold red blink]]Failed to check requirement: {}[/]".format(
+                "[bold red blink]Failed to check requirement: {}[/]".format(
                     line.strip()
                 )
             )

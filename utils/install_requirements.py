@@ -63,7 +63,10 @@ class InstallRequirements:
                 
                 # 解析包名
                 package_name = re.split('>=|>|<=|<|==|!=', line.strip())[0].strip()
-                
+
+                if '[' in package_name and package_name.endswith(']'):
+                    package_name = package_name.split('[')[0].strip()
+                    
                 try:
                     subprocess.check_call([sys.executable, '-m', 'pip', 'show', package_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 except subprocess.CalledProcessError as e:
