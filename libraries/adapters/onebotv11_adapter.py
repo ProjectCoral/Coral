@@ -77,16 +77,19 @@ class Onebotv11Adapter(BaseAdapter):
         return MessageEvent(
             event_id=str(event.get('message_id', event.get('time', 0))),
             platform=PROTOCOL,
-            self_id=self.self_id,
+            self_id=str(self.self_id),
             message=message_chain,
             user=user,
             group=group,
             raw=event
         )
     
-    def _handle_notice_event(self, event: Dict) -> NoticeEvent:
+    def _handle_notice_event(self, event: Dict) -> Union[NoticeEvent, None]:
         """处理通知事件（保持OneBot原生类型）"""
         notice_type = event.get('notice_type')
+        if not notice_type:
+            logger.debug(f"Invalid notice event: {event}")
+            return None
         user = UserInfo(
             platform=PROTOCOL,
             user_id=str(event.get('user_id', ''))
@@ -109,7 +112,7 @@ class Onebotv11Adapter(BaseAdapter):
         return NoticeEvent(
             event_id=f"{event['time']}_{notice_type}",
             platform=PROTOCOL,
-            self_id=self.self_id,
+            self_id=str(self.self_id),
             type=notice_type,  # 直接使用OneBot原生类型
             user=user,
             group=group,
@@ -117,7 +120,7 @@ class Onebotv11Adapter(BaseAdapter):
             raw=event
         )
     
-    async def handle_outgoing_action(self, action: ActionRequest):
+    async def handle_outgoing_action(self, action: ActionRequest) -> Union[BotResponse, None]:
         """处理主动动作请求"""
         try:
             # 根据动作类型构建OneBot API请求
@@ -138,7 +141,7 @@ class Onebotv11Adapter(BaseAdapter):
             logger.error(f"Error handling outgoing action: {e}")
             return BotResponse(success=False, message=str(e))
     
-    async def handle_outgoing_message(self, message: MessageRequest):
+    async def handle_outgoing_message(self, message: MessageRequest) -> Union[BotResponse, None]:
         """处理消息回复"""
         try:
             onebot_message = []
@@ -158,12 +161,12 @@ class Onebotv11Adapter(BaseAdapter):
                     onebot_message.append({
                         'type': 'image',
                         'data': {'file': seg.data.get('url', '')}
-                    })
+                    }) if isinstance(seg.data, dict) else None
                 elif seg.type == 'at':
                     onebot_message.append({
                         'type': 'at',
                         'data': {'qq': seg.data.get('user_id', '')}
-                    })
+                    }) if isinstance(seg.data, dict) else None
             
             # 构建API参数
             params = {
@@ -175,7 +178,7 @@ class Onebotv11Adapter(BaseAdapter):
             if message.group:
                 params['group_id'] = message.group.group_id
             else:
-                params['user_id'] = message.user.user_id
+                params['user_id'] = message.user.user_id if message.user else None # 不应该出现这种情况
             
             # 构建API请求
             api_request = {

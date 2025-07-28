@@ -88,6 +88,7 @@ class DriverManager:
             f.split(".")[0] for f in os.listdir(driver_path) if f.endswith("_driver.py")
         ]
         for module in driver_modules:
+            driver_name = None
             try:
                 driver_name = module.split("_driver")[0]
                 driver_obj = importlib.import_module(
