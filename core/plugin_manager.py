@@ -12,9 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 class PluginManager:
-    register = None
-    config = None
-    perm_system = None
     plugin_dir = "./plugins"
 
     def __init__(self, register, config, perm_system, plugin_dir="./plugins"):
@@ -96,6 +93,13 @@ class PluginManager:
             spec = importlib.util.spec_from_file_location(
                 f"plugins.{plugin_name}", init_file
             )
+            if not spec:
+                logger.error(
+                    "[red]Failed to load plugin [/]"
+                    + str(plugin_name)
+                    + "[red] , skipping...[/]"
+                )
+                return None
             module = importlib.util.module_from_spec(spec)
 
             meta = self.get_plugin_meta(init_file)
@@ -103,6 +107,7 @@ class PluginManager:
             if meta:
                 if (
                     "compatibility" in meta
+                    and isinstance(meta["compatibility"], str)
                     and int(meta["compatibility"]) < self.pluginmanager_meta
                 ):
                     logger.error(

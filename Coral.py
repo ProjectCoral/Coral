@@ -72,7 +72,7 @@ class Coral:
         )
 
         last_init_time = self.config.get("last_init_time", end_time - start_time)
-        if end_time - start_time < last_init_time:
+        if last_init_time and end_time - start_time < last_init_time:
             logger.info(
                 f"[cyan]Coral initialize boosted\U0001f680 by {last_init_time - end_time + start_time:.2f} seconds.[/]"
             )
@@ -137,7 +137,7 @@ def perm_require(permission: Union[str, List[str]]):
     return decorator
 
 
-def on_message(name: str = None, priority: int = 5):
+def on_message(name: str | None = None, priority: int = 5):
     """消息事件处理器注册"""
 
     def decorator(func):
@@ -150,7 +150,7 @@ def on_message(name: str = None, priority: int = 5):
     return decorator
 
 
-def on_notice(name: str = None, priority: int = 5):
+def on_notice(name: str | None = None, priority: int = 5):
     """通知事件处理器注册"""
 
     def decorator(func):
@@ -163,7 +163,7 @@ def on_notice(name: str = None, priority: int = 5):
     return decorator
 
 
-def on_event(name: str = None, event_type: Any = MessageEvent, priority: int = 5):
+def on_event(name: str | None = None, event_type: Any = MessageEvent, priority: int = 5):
     """事件处理器注册"""
 
     def decorator(func):

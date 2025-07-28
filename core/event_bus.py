@@ -4,7 +4,7 @@ import logging
 import threading
 import queue
 import time
-from typing import Union
+from typing import Union, Callable
 from .protocol import (
     MessageRequest,
     MessageEvent,
@@ -12,6 +12,7 @@ from .protocol import (
     CommandEvent,
     MessageChain,
     MessageSegment,
+    Event
 )
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,6 @@ class EventBus:
     def __init__(self):
         self._subscribers = defaultdict(list)
         self._middlewares = []
-        self._result_queue = None
         self._task = None
 
     async def initialize(self):
@@ -29,19 +29,19 @@ class EventBus:
         threading.Thread(target=self._process_results, daemon=True).start()
         logger.info("Event bus buffer initialized.")
 
-    def subscribe(self, event_type: type, handler: callable, priority: int = 5):
+    def subscribe(self, event_type: type, handler: Callable, priority: int = 5):
         """订阅事件"""
         self._subscribers[event_type].append((handler, priority))
         self._subscribers[event_type].sort(key=lambda x: x[1], reverse=True)
 
-    def unsubscribe(self, event_type: type, handler: callable):
+    def unsubscribe(self, event_type: type, handler: Callable):
         """取消订阅事件"""
         if event_type in self._subscribers:
             self._subscribers[event_type] = [
                 (h, p) for h, p in self._subscribers[event_type] if h != handler
             ]
 
-    async def publish(self, event: object) -> None:
+    async def publish(self, event: Event) -> None:
         """发布事件（带中间件处理）"""
         # 执行中间件链
         for middleware in self._middlewares:
@@ -74,12 +74,15 @@ class EventBus:
             self._result_queue.put(result) if result is not None else None
 
     def convert_to_protocol(
-        self, event: Union[MessageEvent, NoticeEvent, CommandEvent], result: str
-    ) -> MessageRequest:
+        self, event: Event, result: str
+    ) -> Union[MessageRequest, None]:
         """将事件和结果转换为协议格式"""
         logger.warning(
             f"Result returned a string, which is deprecated and might be broken in a future version."
         )
+        if not isinstance(event, Union[MessageEvent, NoticeEvent, CommandEvent]):
+            logger.warning(f"Unsupported event type: {type(event)}")
+            return None
         return MessageRequest(
             platform=event.platform,
             event_id=event.event_id,
@@ -89,7 +92,7 @@ class EventBus:
             group=event.group if hasattr(event, "group") else None,
         )
 
-    def add_middleware(self, middleware: callable):
+    def add_middleware(self, middleware: Callable):
         """添加中间件"""
         self._middlewares.append(middleware)
 

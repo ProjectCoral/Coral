@@ -1,7 +1,7 @@
 import os
 import time
 from Coral import register, config, perm_system
-from core.protocol import CommandEvent, MessageSegment, UserInfo
+from core.protocol import CommandEvent, MessageSegment, UserInfo, MessageChain
 
 def register_plugin():
     perm_system.register_perm("base_commands", "Base Permission")
@@ -14,10 +14,6 @@ def register_plugin():
     register.register_event("coral_initialized", "init_time", base_commands(register, config, perm_system).init_timer, 1)
 
 class base_commands:
-    register = None
-    config = None
-    perm_system = None
-
     def __init__(self, register, config, perm_system):
         self.register = register
         self.config = config
@@ -47,7 +43,7 @@ class base_commands:
                             platform = "system",
                             self_id= "Console",
                             command="plugins",
-                            raw_message=MessageSegment(type="text", data="plugins"),
+                            raw_message=MessageChain([MessageSegment(type="text", data="plugins")]),
                             user=UserInfo(platform="system", user_id="Console"),
                             group=None,
                             args=[]
