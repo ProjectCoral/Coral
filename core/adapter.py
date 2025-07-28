@@ -48,7 +48,7 @@ class BaseAdapter(ABC):
         """处理消息回复"""
         raise NotImplementedError
 
-    def register_event_handler(self, event_type: type, handler: callable):
+    def register_event_handler(self, event_type: type, handler: object):
         """注册特定事件类型的处理函数"""
         self._handlers[event_type] = handler
 
@@ -135,7 +135,3 @@ class AdapterManager:
                 logger.exception(f"Error loading adapter {adapter_name}: {e}")
                 continue
         logger.info(f"Loaded {len(self.adapters)} adapters.")
-
-    def get_adapter(self, protocol: str) -> Optional[BaseAdapter]:
-        """获取指定协议的适配器"""
-        return self.adapters.get(protocol.lower())
