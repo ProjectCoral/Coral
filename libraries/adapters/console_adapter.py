@@ -2,16 +2,16 @@
 import time
 import logging
 from typing import Any, Dict
-from core.adapter import BaseAdapter
-from core.driver import BaseDriver
-from core.protocol import MessageEvent, CommandEvent, MessageChain, MessageSegment, UserInfo, MessageRequest, ActionRequest, GenericEvent
+from Coral.adapter import BaseAdapter
+from Coral.driver import BaseDriver
+from Coral.protocol import MessageEvent, CommandEvent, MessageChain, MessageSegment, UserInfo, MessageRequest, ActionRequest, GenericEvent, Bot
 
 logger = logging.getLogger(__name__)
 
-PROTOCOL = "console"
 
 class ConsoleAdapter(BaseAdapter):
     """控制台适配器 - 处理控制台消息转换"""
+    PROTOCOL = "console"
     
     def __init__(self, config: Dict[str, Any] = {}):
         super().__init__(config)
@@ -31,7 +31,7 @@ class ConsoleAdapter(BaseAdapter):
         
         event = CommandEvent(
             event_id=f"console-{time.time()}",
-            platform="console",
+            platform=self.PROTOCOL,
             self_id="Console",
             command=command,
             raw_message=MessageChain([MessageSegment.text(text)]),

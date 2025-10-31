@@ -40,8 +40,6 @@ def walklevel(path=".", max_depth=None):
                 files.append(entry)
         yield current_path, dirs, files
 
-
-
 def parse_traceback_lines(traceback_lines) -> list:
     pattern = r'^\s*File "(?P<file>.+)", line (?P<line>\d+), in (?P<function>.+)$'
     result = []
@@ -59,7 +57,6 @@ def parse_traceback_lines(traceback_lines) -> list:
             result.append(info)
     result.reverse()  # 反转顺序，使最新的函数在最前面
     return result
-
 
 def global_exception_handler(exc_type, exc_value, exc_traceback):
     """全局异常处理器，捕获未处理的异常并生成详细日志"""

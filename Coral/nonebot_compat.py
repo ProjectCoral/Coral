@@ -3,7 +3,7 @@ import asyncio
 import logging
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
-from core.protocol import (
+from Coral.protocol import (
     MessageEvent as CoreMessageEvent, 
     NoticeEvent as CoreNoticeEvent, 
     CommandEvent as CoreCommandEvent, 
@@ -14,9 +14,9 @@ from core.protocol import (
     MessageRequest,
     MessageBase  # 新增导入
 )
-from core.event_bus import EventBus
-from core.register import Register
-from core.perm_system import PermSystem
+from Coral.event_bus import EventBus
+from Coral.register import Register
+from Coral.perm_system import PermSystem
 
 logger = logging.getLogger(__name__)
 

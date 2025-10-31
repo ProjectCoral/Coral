@@ -11,12 +11,14 @@ logger = logging.getLogger(__name__)
 
 class BaseDriver(ABC):
     """驱动器基类 - 处理与平台的实际通信"""
+    PROTOCOL = "unknown"  # 默认协议
 
     def __init__(self, adapter: BaseAdapter, config: Dict[str, Any]):
         self.config = config
         self.adapter = adapter
         self._running = False
         self.adapter.add_driver(self)
+        self.self_id = config.get("self_id", "unknown")  # 从配置中获取self_id
 
     @abstractmethod
     async def start(self):
@@ -39,6 +41,20 @@ class BaseDriver(ABC):
             await self.adapter.handle_incoming(raw_data)
         else:
             logger.warning("No adapter set, cannot handle incoming data")
+
+    def on_connect(self):
+        """当驱动器连接时调用"""
+        logger.info(f"Driver connected with self_id: {self.self_id}")
+        if self.adapter:
+            # 通知适配器创建Bot对象
+            self.adapter.create_bot_for_driver(self)
+
+    def on_disconnect(self):
+        """当驱动器断开连接时调用"""
+        logger.info(f"Driver disconnected with self_id: {self.self_id}")
+        if self.adapter:
+            # 通知适配器移除Bot对象
+            self.adapter.remove_bot_for_driver(self)
 
 
 class DriverManager:
@@ -100,7 +116,7 @@ class DriverManager:
                         f"Found driver {driver_name} but it is not a subclass of BaseDriver, skipping..."
                     )
                 driver_config = self.config.get(driver_name + "_driver", {})
-                driver_protocol = getattr(driver_obj, "PROTOCOL", None)
+                driver_protocol = getattr(driver_class, "PROTOCOL", None)
                 if not driver_protocol:
                     logger.warning(
                         f"Driver {driver_name} did not specify a protocol, skipping..."

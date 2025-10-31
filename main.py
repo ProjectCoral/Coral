@@ -18,7 +18,7 @@ logging.basicConfig(
     format="%(message)s",
     datefmt="[%H:%M:%S]",
     handlers=[
-        RichHandler(rich_tracebacks=True, markup=True, omit_repeated_times=False)
+        RichHandler(rich_tracebacks=True, markup=True, omit_repeated_times=False, show_path=False)
     ],
 )
 
@@ -115,7 +115,7 @@ for root, dirs, files in os.walk("./"):
 if __name__ == "__main__":
     logging.info("[green]Starting Coral...[/]")
     # try:
-    from Coral import Coral
+    from Loader import CoralLoader
 
-    Coral()
+    CoralLoader()
     os._exit(0)

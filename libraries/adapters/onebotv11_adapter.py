@@ -1,21 +1,21 @@
 import logging
 import json
 from typing import Any, Dict, Union
-from core.protocol import MessageEvent, ActionRequest, MessageRequest, MessageChain, MessageSegment, UserInfo, GroupInfo, NoticeEvent, BotResponse
-from core.adapter import BaseAdapter
+from Coral.protocol import MessageEvent, ActionRequest, MessageRequest, MessageChain, MessageSegment, UserInfo, GroupInfo, NoticeEvent, BotResponse, Bot
+from Coral.adapter import BaseAdapter
 from Coral import config as coral_config
 
 logger = logging.getLogger(__name__)
 
-PROTOCOL = "onebotv11"
 
 class Onebotv11Adapter(BaseAdapter):
     """OneBot V11协议适配器"""
+    PROTOCOL = "onebotv11"
     
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.self_id = coral_config.get('self_id', '')
-        logger.info(f"OneBotV11 Adapter initialized for bot: {self.self_id}")
+        logger.info(f"OneBotV11 Adapter initialized")
     
     async def handle_incoming(self, raw_data: Dict[str, Any]):
         """处理来自驱动器的原始OneBot事件"""
@@ -33,7 +33,7 @@ class Onebotv11Adapter(BaseAdapter):
         if post_type == 'message':
             return self._handle_message_event(event)
         elif post_type == 'notice':
-            return self._handle_notice_event(event)
+            return self._handle_action_event(event)
         elif post_type == 'request':
             # 处理请求事件（如加好友、加群请求）
             logger.debug(f"Request event received: {event}")
@@ -41,6 +41,10 @@ class Onebotv11Adapter(BaseAdapter):
         elif post_type == 'meta_event':
             # 处理元事件（如心跳包）
             logger.debug(f"Meta event received: {event}")
+            # 处理连接事件
+            if event.get('meta_event_type') == 'lifecycle' and event.get('sub_type') == 'connect':
+                self_id = str(event.get('self_id', self.self_id))
+                logger.info(f"Connected to bot {self_id}")
             return None
         else:
             logger.debug(f"Unhandled event type: {post_type}")
@@ -61,7 +65,7 @@ class Onebotv11Adapter(BaseAdapter):
             message_chain.append(MessageSegment.text(event['message']))
         
         user = UserInfo(
-            platform=PROTOCOL,
+            platform=self.PROTOCOL,
             user_id=str(event.get('user_id', '')),
             nickname=event.get('sender', {}).get('nickname', '')
         )
@@ -69,50 +73,50 @@ class Onebotv11Adapter(BaseAdapter):
         group = None
         if 'group_id' in event:
             group = GroupInfo(
-                platform=PROTOCOL,
+                platform=self.PROTOCOL,
                 group_id=str(event['group_id']),
                 name=event.get('group_name', '')
             )
         
         return MessageEvent(
             event_id=str(event.get('message_id', event.get('time', 0))),
-            platform=PROTOCOL,
-            self_id=str(self.self_id),
+            platform=self.PROTOCOL,
+            self_id=str(event.get('self_id', self.self_id)),
             message=message_chain,
             user=user,
             group=group,
             raw=event
         )
     
-    def _handle_notice_event(self, event: Dict) -> Union[NoticeEvent, None]:
-        """处理通知事件（保持OneBot原生类型）"""
+    def _handle_action_event(self, event: Dict) -> Union[NoticeEvent, None]:
+        """处理动作事件（原通知事件）"""
         notice_type = event.get('notice_type')
         if not notice_type:
-            logger.debug(f"Invalid notice event: {event}")
+            logger.debug(f"Invalid action event: {event}")
             return None
         user = UserInfo(
-            platform=PROTOCOL,
+            platform=self.PROTOCOL,
             user_id=str(event.get('user_id', ''))
         )
 
         group = None
         if 'group_id' in event:
             group = GroupInfo(
-                platform=PROTOCOL,
+                platform=self.PROTOCOL,
                 group_id=str(event['group_id'])
                 )
         
         operator = None
         if 'operator_id' in event:
             operator = UserInfo(
-                platform=PROTOCOL,
+                platform=self.PROTOCOL,
                 user_id=str(event['operator_id'])
             )
         
         return NoticeEvent(
             event_id=f"{event['time']}_{notice_type}",
-            platform=PROTOCOL,
-            self_id=str(self.self_id),
+            platform=self.PROTOCOL,
+            self_id=str(event.get('self_id', self.self_id)),
             type=notice_type,  # 直接使用OneBot原生类型
             user=user,
             group=group,
@@ -125,12 +129,12 @@ class Onebotv11Adapter(BaseAdapter):
         try:
             # 根据动作类型构建OneBot API请求
             api_request = {
-                'action': action.type,
+                'action': action.type.value,  # 获取枚举值
                 'params': action.data
             }
             
             # 添加机器人ID
-            api_request['params']['self_id'] = self.self_id
+            api_request['params']['self_id'] = action.self_id
             
             # 通过驱动器发送请求
             await self.send_to_driver(api_request)
@@ -176,8 +180,14 @@ class Onebotv11Adapter(BaseAdapter):
             
             # 设置接收者
             if message.group:
+                if not message.group.group_id.isdigit():
+                    logger.warning(f"Onebotv11 requires numeric group ID, but got {type(message.group.group_id)}")
+                    return BotResponse(success=False, message=f"Invalid group ID")
                 params['group_id'] = message.group.group_id
             else:
+                if message.user is None or not message.user.user_id.isdigit():
+                    logger.warning("Onebotv11 requires numeric user ID, but got %s", type(message.user.user_id) if message.user else "None")
+                    return BotResponse(success=False, message=f"Invalid user ID")
                 params['user_id'] = message.user.user_id if message.user else None # 不应该出现这种情况
             
             # 构建API请求

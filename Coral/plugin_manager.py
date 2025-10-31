@@ -197,7 +197,7 @@ class PluginManager:
             await self.register.core_reload()
             logger.info(f"Reloading plugins from {self.plugin_dir}")
             reload_tasks = [
-                self.load_plugin(plugin_name)
+                self.reload_plugin(plugin_name)
                 for plugin_name in os.listdir(self.plugin_dir)
             ]
             await asyncio.gather(*reload_tasks)

@@ -2,17 +2,17 @@ import asyncio
 import logging
 import json
 from typing import Any, Dict
-from core.driver import BaseDriver
-from core.adapter import BaseAdapter
+from Coral.driver import BaseDriver
+from Coral.adapter import BaseAdapter
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import uvicorn
 
 logger = logging.getLogger(__name__)
 
-PROTOCOL = 'onebotv11'
 
 class ReversewsDriver(BaseDriver):
     """反向WebSocket驱动器（FastAPI实现）"""
+    PROTOCOL = 'onebotv11'
     
     def __init__(self, adapter: BaseAdapter, config: Dict[str, Any]):
         super().__init__(adapter, config)
@@ -70,7 +70,8 @@ class ReversewsDriver(BaseDriver):
         await websocket.accept()
         
         self.websocket = websocket
-        logger.info("OneBot implementation connected")
+        # 当WebSocket连接建立时，调用on_connect方法
+        self.on_connect()
         
         try:
             while True:
@@ -82,6 +83,8 @@ class ReversewsDriver(BaseDriver):
             logger.error(f"WebSocket error: {e}")
         finally:
             self.websocket = None
+            # 当WebSocket连接断开时，调用on_disconnect方法
+            self.on_disconnect()
     
     async def _process_message(self, message: str):
         """处理接收到的消息（保持不变）"""
