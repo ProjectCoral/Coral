@@ -1,7 +1,7 @@
 import os
 import time
 from Coral import register, config, perm_system
-from core.protocol import CommandEvent, MessageSegment, UserInfo, MessageChain
+from Coral.protocol import CommandEvent, MessageSegment, UserInfo, MessageChain
 
 def register_plugin():
     perm_system.register_perm("base_commands", "Base Permission")

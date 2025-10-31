@@ -6,8 +6,7 @@ from typing import Union, List
 from pyfiglet import Figlet
 from colorama import Fore
 
-from core.protocol import *
-from core.core import (
+from Coral import (
     config,
     event_bus,
     register,
@@ -18,6 +17,8 @@ from core.core import (
     CORAL_VERSION,
 )
 
+from Coral.protocol import *
+
 import utils.commands
 import utils.install_requirements
 import utils.chat_command
@@ -25,7 +26,7 @@ import utils.chat_command
 logger = logging.getLogger(__name__)
 
 
-class Coral:
+class CoralLoader:
     def __init__(self):
         textrender = Figlet(font="larry3d")
         print(Fore.GREEN + textrender.renderText("Project Coral") + Fore.RESET)
@@ -55,11 +56,11 @@ class Coral:
         await adapter_manager.load_adapters()
         await driver_manager.load_drivers()
 
-        logger.info("Initializing nonebot2 compatibility layer...")
+        # logger.info("Initializing nonebot2 compatibility layer...")
 
-        from core.nonebot_compat import init_nonebot_compat
+        # from Coral.nonebot_compat import init_nonebot_compat
 
-        init_nonebot_compat(self.event_bus, self.register, self.perm_system)
+        # init_nonebot_compat(self.event_bus, self.register, self.perm_system)
 
         await self.event_bus.publish(
             GenericEvent(name="coral_initialized", platform="coral")
@@ -116,89 +117,3 @@ class Coral:
         )
         await driver_manager.stop_all()
         os._exit(0)
-
-
-def perm_require(permission: Union[str, List[str]]):
-    """权限检查装饰器"""
-
-    def decorator(func):
-        async def wrapper(event: CommandEvent, *args, **kwargs):
-            # 检查权限
-            if perm_system and not perm_system.check_perm(
-                permission,
-                event.user.user_id,
-                event.group.group_id if event.group else -1,
-            ):
-                return None  # Permission denied
-            return await func(event, *args, **kwargs)
-
-        return wrapper
-
-    return decorator
-
-
-def on_message(name: str | None = None, priority: int = 5):
-    """消息事件处理器注册"""
-
-    def decorator(func):
-        nonlocal name
-        if name is None:
-            name = func.__name__
-        event_bus.subscribe(MessageEvent, func, priority)
-        return func
-
-    return decorator
-
-
-def on_notice(name: str | None = None, priority: int = 5):
-    """通知事件处理器注册"""
-
-    def decorator(func):
-        nonlocal name
-        if name is None:
-            name = func.__name__
-        event_bus.subscribe(NoticeEvent, func, priority)
-        return func
-
-    return decorator
-
-
-def on_event(name: str | None = None, event_type: Any = MessageEvent, priority: int = 5):
-    """事件处理器注册"""
-
-    def decorator(func):
-        nonlocal name
-        if name is None:
-            name = func.__name__
-        event_bus.subscribe(event_type, func, priority)
-        return func
-
-    return decorator
-
-
-def on_command(
-    name: str, description: str, permission: Union[str, List[str], None] = None
-):
-    """命令处理器注册"""
-
-    def decorator(func):
-        # 注册命令
-        register.register_command(name, description, func, permission)
-
-        # 添加权限检查（如果提供了权限）
-        if permission:
-            func = perm_require(permission)(func)
-
-        return func
-
-    return decorator
-
-
-def on_function(name: str):
-    """功能函数注册"""
-
-    def decorator(func):
-        register.register_function(name, func)
-        return func
-
-    return decorator

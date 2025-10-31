@@ -7,12 +7,12 @@ import json
 import logging
 import flet as ft
 
-from core.core import (
+from Coral import (
     config, event_bus, register, perm_system,
     plugin_manager, driver_manager, adapter_manager
 )
 
-from core.protocol import CommandEvent, MessageSegment, MessageChain, UserInfo
+from Coral.protocol import CommandEvent, MessageSegment, MessageChain, UserInfo
 
 logger = logging.getLogger(__name__)
 

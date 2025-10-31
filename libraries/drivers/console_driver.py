@@ -1,8 +1,8 @@
 import asyncio
 import logging
 from typing import Dict, Any
-from core.driver import BaseDriver
-from core.adapter import BaseAdapter
+from Coral.driver import BaseDriver
+from Coral.adapter import BaseAdapter
 from prompt_toolkit import PromptSession
 from prompt_toolkit.styles import Style
 import threading
@@ -17,18 +17,21 @@ prompt_style = Style.from_dict({
     })
 
 prompt_message = [
-    ('class:pound',    '> '), # pound对应'>'
+    ('class:pound',    '> '), # pound对应'>'  
 ]
 
-PROTOCOL = "console"
 
 class ConsoleDriver(BaseDriver):
     """控制台驱动器 - 处理控制台输入输出"""
+    PROTOCOL = "console"
     
     def __init__(self, adapter: BaseAdapter, config: Dict[str, Any] = {}):
         super().__init__(adapter, config)
+        self.self_id = "Console"
         self.input_queue = asyncio.Queue()
         self.prompt_session = PromptSession(prompt_message, style=prompt_style)
+        # 控制台驱动器启动时就创建Bot对象
+        self.on_connect()
     
     async def start(self):
         """启动控制台输入监听"""
@@ -39,6 +42,8 @@ class ConsoleDriver(BaseDriver):
     async def stop(self):
         """停止驱动器"""
         self._running = False
+        # 停止时移除Bot对象
+        self.on_disconnect()
         logger.info("Console driver stopped")
     
     def _read_console_input(self):

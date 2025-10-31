@@ -4,7 +4,6 @@ import datetime
 import random
 import traceback
 from typing import Union, List, Callable
-from .future import RegisterFuture
 from .protocol import (
     CommandEvent,
     MessageEvent,
@@ -30,7 +29,6 @@ class Register:
         self.command_descriptions = {}
         self.functions = {}
         self.load_buildin_plugins: Callable
-        self.future = RegisterFuture(self)
         self.crash_times = {}
         self._event_handlers = defaultdict(
             dict
