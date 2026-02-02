@@ -23,7 +23,7 @@
 
 本项目采用 `AGPL-3.0` 协议开源，详情请参阅 [LICENSE](https://github.com/ProjectCoral/Coral/blob/main/LICENSE) 文件。
 
-    Copyright (C) 2024-2025 ProjectCoral and contributors.
+    Copyright (C) 2024-2026 ProjectCoral and contributors.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -54,10 +54,6 @@
 
 Coral 是一个跨平台、可扩展的 Python 机器人框架，Coral 基于事件驱动，使用异步 IO，能够为你的需求实现提供便捷灵活的支持。
 
-Coral 与 Nonebot2 虽然都是 Python 机器人框架，但它们的实现方式不同，面向的使用对象也不同。
-
-相较于 Nonebot2 , Coral 更接近于 mirai ,这就好比 Forge 与 Fabric , Coral 更加完整， Nonebot2 则更加轻量。
-
 Coral 项目已经内置了不少有用的方法和插件，它可以帮助你快速开发出一个功能丰富、可扩展的机器人。
 
 ## 特性
@@ -68,13 +64,15 @@ Coral 项目已经内置了不少有用的方法和插件，它可以帮助你�
 - [x] 权限管理系统
 - [x] 多平台适配器（OneBot V11、Console等）
 - [x] 多Bot管理（一个平台可连接多个账号）
-- [x] NoneBot2兼容层
 - [x] 丰富的消息类型支持
 
 ## 快速使用
 
 > [!important]
+>
 > 在2025/6/8的更新中，完全重构了 Coral 框架，并引入事件总线、适配器和驱动器。这将导致部分文档/插件失效，请见谅。
+>
+> 在2026/1/31后，Coral 框架引入 [Protocol v3](docs/DevManual/Protocol.md) 和 [过滤器](docs/DevManual/Filters.md) ，为插件开发提供了更好的体验。
 
 > 如果你希望快速部署一个 Coral 机器人，安装插件、并投入使用，请看这里：[快速部署](docs/QuickStart.md)
 

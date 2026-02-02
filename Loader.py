@@ -56,12 +56,6 @@ class CoralLoader:
         await adapter_manager.load_adapters()
         await driver_manager.load_drivers()
 
-        # logger.info("Initializing nonebot2 compatibility layer...")
-
-        # from Coral.nonebot_compat import init_nonebot_compat
-
-        # init_nonebot_compat(self.event_bus, self.register, self.perm_system)
-
         await self.event_bus.publish(
             GenericEvent(name="coral_initialized", platform="coral")
         )
@@ -102,7 +96,16 @@ class CoralLoader:
         if not isinstance(dashboard_config, dict) or not dashboard_config.get(
             "enable", False
         ):
+            # 如果没有启用dashboard，保持程序运行
+            logger.info("Coral is running. Press Ctrl+C to stop.")
+            try:
+                # 无限等待，保持程序运行
+                while True:
+                    await asyncio.sleep(3600)  # 每小时检查一次
+            except KeyboardInterrupt:
+                await self.stopping()
             return
+        
         from utils.dashboard import run_dashboard
 
         try:
@@ -115,5 +118,8 @@ class CoralLoader:
         await self.event_bus.publish(
             GenericEvent(name="coral_shutdown", platform="coral")
         )
+        # 关闭事件总线
+        if hasattr(self.event_bus, 'shutdown'):
+            await self.event_bus.shutdown()
         await driver_manager.stop_all()
         os._exit(0)

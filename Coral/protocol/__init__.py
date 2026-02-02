@@ -24,4 +24,4 @@ __all__ = [
     "PROTOCOL_VERSION"
 ]
 
-PROTOCOL_VERSION = "1.1.0"  # 协议版本
+PROTOCOL_VERSION = 3  # 协议版本

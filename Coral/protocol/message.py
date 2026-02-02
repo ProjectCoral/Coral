@@ -78,6 +78,26 @@ class MessageChain(MessageBase):
 
     segments: List[MessageSegment] = field(default_factory=list)
 
+    @classmethod
+    def text(cls, content: str) -> "MessageChain":
+        """创建文本消息链"""
+        return cls([MessageSegment.text(content)])
+
+    @classmethod
+    def image(cls, url: str, width: Optional[int] = None, height: Optional[int] = None) -> "MessageChain":
+        """创建图片消息链"""
+        return cls([MessageSegment.image(url, width, height)])
+
+    @classmethod
+    def at(cls, user_id: str) -> "MessageChain":
+        """创建@用户消息链"""
+        return cls([MessageSegment.at(user_id)])
+
+    @classmethod
+    def face(cls, face_id: str) -> "MessageChain":
+        """创建表情消息链"""
+        return cls([MessageSegment.face(face_id)])
+
     def append(self, segment: MessageSegment) -> None:
         """添加消息段"""
         self.segments.append(segment)
@@ -86,6 +106,26 @@ class MessageChain(MessageBase):
         """扩展消息段列表"""
         self.segments.extend(segments)
 
+    def add_text(self, content: str) -> "MessageChain":
+        """添加文本消息段（链式调用）"""
+        self.segments.append(MessageSegment.text(content))
+        return self
+
+    def add_image(self, url: str, width: Optional[int] = None, height: Optional[int] = None) -> "MessageChain":
+        """添加图片消息段（链式调用）"""
+        self.segments.append(MessageSegment.image(url, width, height))
+        return self
+
+    def add_at(self, user_id: str) -> "MessageChain":
+        """添加@用户消息段（链式调用）"""
+        self.segments.append(MessageSegment.at(user_id))
+        return self
+
+    def add_face(self, face_id: str) -> "MessageChain":
+        """添加表情消息段（链式调用）"""
+        self.segments.append(MessageSegment.face(face_id))
+        return self
+
     def to_plain_text(self) -> str:
-        """转换为纯文本（忽略非文本消息段）"""
-        return "".join(seg.data for seg in self.segments if seg.type == "text" and isinstance(seg.data, str))
+        """转换为纯文本（忽略非文本消息段和头尾空格）"""
+        return "".join(seg.data for seg in self.segments if seg.type == "text" and isinstance(seg.data, str)).strip()

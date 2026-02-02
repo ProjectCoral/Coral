@@ -4,9 +4,6 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
 
 无论哪种，都需要在 `_init_.py` 中调用 `register` 类的方法 / 使用 `Coral` 内部装饰器，并传入相应的参数。
 
-> [!important]
-> 在25/6/8的更新中，完全重构了注册方式，原先的[注册方式](PluginReg_old.md)仍然可以继续使用，但不再推荐。
-
 返回的数据格式请参考 [Protocol 文档](Protocol.md)。
 
 ## 注册命令
@@ -18,7 +15,6 @@ Coral 插件注册的行为分为三种类型：命令、监听事件、函数�
 
 ```python
 from Coral import on_command, CommandEvent
-
 
 @on_command('hello')
 async def hello(event: CommandEvent):
@@ -33,15 +29,17 @@ async def hello(event: CommandEvent):
 - `description`：命令的描述，用于帮助用户理解命令的作用。
 - `permission`：命令的权限，用于控制用户是否有权限执行该命令。
   
-你也可以使用`@perm_require` 装饰器来控制权限（你仍然需要注册权限，参考[权限系统](PermSystem.md)）。
+你也可以使用 `filters` 来控制权限（你仍然需要注册权限，参考[权限系统](PermSystem.md)）。
 
 ```python
-from Coral import on_command, CommandEvent, perm_require
+from Coral import on_command, CommandEvent
+from Coral.filters import has_permission
 
 @on_command(
     name = 'hello',
-    description = 'Say hello to the world')
-@perm_require('hello.use') # 控制用户是否有权限执行该命令
+    description = 'Say hello to the world',
+    filters = has_permission('admin'), # 权限过滤器
+)
 async def hello(event: CommandEvent):
     return 'Hello, world!'
 ```
@@ -78,6 +76,20 @@ async def handle_message(event: MessageEvent):
     # 处理消息事件
     pass
 ```
+
+你也可以使用 `filters` 来过滤消息事件。
+
+```python
+from Coral import on_message, MessageEvent
+from Coral.filters import is_private
+
+@on_message(filters=is_private())
+async def handle_message(event: MessageEvent):
+    # 处理消息事件
+    pass
+```
+
+有关 `filter` 的具体使用，请查看 [Filters.md](Filters.md)。
 
 ### 监听通知事件
 
@@ -139,7 +151,7 @@ async def hello():
 
 ## 注册权限
 
-你可能已经注意到，在注册命令时，可以使用 `perm_require` 装饰器来控制用户是否有权限执行该命令。
+你可能已经注意到，在注册命令时，可以使用 `filters` 中的 `has_permission` 来控制用户是否有权限执行该命令。
 
 权限系统是 Coral 提供的插件权限管理系统，它可以让你更精细地控制用户对插件的访问权限。
 

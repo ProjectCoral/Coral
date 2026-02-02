@@ -38,17 +38,28 @@ Coral 内置了权限系统，用户可以根据自己的需求进行权限控�
 
     ```python
     from Coral import on_command, config
-    @on_command("fetch_self_id", "Fetch self id", ["test_perm", "test_perm.sub_perm"])
+    @on_command(
+        name = "fetch_self_id", 
+        description = "Fetch self id", 
+        permission = ["test_perm", "test_perm.sub_perm"]
+    )
     async def fetch_self_id(*args):
         ...
     ```
 
-    或是使用装饰器 `@perm_require`:
+    或是使用过滤器中的 `has_permission`:
 
     ```python
-    from Coral import on_command, config, perm_require
-    @on_command("fetch_self_id", "Fetch self id")
-    @perm_require(["test_perm", "test_perm.sub_perm"])
+    from Coral import on_command, config
+    from Coral.filters import has_permission
+
+    @on_command(
+        name = "fetch_self_id", 
+        description = "Fetch self id",
+        filters = has_permission(
+            ["test_perm", "test_perm.sub_perm"]
+        ),
+    )
     async def fetch_self_id(*args):
         ...
     ```
