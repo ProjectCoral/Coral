@@ -1,4 +1,7 @@
-from .message import MessageBase, UserInfo, GroupInfo, MessageSegment, MessageChain
+from .message import (
+    MessageBase, UserInfo, GroupInfo, MessageSegment, MessageChain,
+    ShareType, Share
+)
 from .event import Event, MessageEvent, NoticeEvent, CommandEvent, GenericEvent
 from .response import BotResponse, MessageRequest, ActionRequest
 from .bot import Bot
@@ -10,6 +13,8 @@ __all__ = [
     "GroupInfo",
     "MessageSegment",
     "MessageChain",
+    "ShareType",
+    "Share",
     "Event",
     "MessageEvent",
     "NoticeEvent",

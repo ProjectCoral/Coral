@@ -386,11 +386,240 @@ async def weather_command(event):
 
 ---
 
+## PluginManager 使用指南
+
+Coral PluginManager 是一个功能强大的插件管理系统，提供了完整的插件生命周期管理功能。以下是 PluginManager 的主要功能和使用方法：
+
+### 1. 插件管理命令
+
+PluginManager 提供了一套完整的插件管理命令：
+
+```bash
+# 加载插件
+plugin load example_plugin
+
+# 卸载插件
+plugin unload example_plugin
+
+# 启用插件
+plugin enable example_plugin
+
+# 禁用插件
+plugin disable example_plugin
+
+# 列出插件
+plugin list all           # 所有插件
+plugin list loaded        # 已加载的插件
+plugin list enabled       # 已启用的插件
+plugin list disabled      # 已禁用的插件
+
+# 查看统计信息
+plugin stats              # 总体统计
+plugin stats example_plugin  # 特定插件统计
+
+# 查看插件信息
+plugin info example_plugin
+
+# 重新加载插件
+plugin reload example_plugin  # 重新加载单个插件
+plugin reload all             # 重新加载所有插件
+
+# 获取帮助
+plugin help                  # 所有命令帮助
+plugin help load             # 特定命令帮助
+```
+
+### 2. 插件元数据规范
+
+插件必须声明元数据，支持依赖管理和权限声明：
+
+```python
+__plugin_meta__ = {
+    "name": "天气查询插件",
+    "version": "2.0.0",
+    "author": "开发者名称",
+    "description": "查询城市天气信息",
+    "compatibility": "250606",  # 兼容的PluginManager版本
+    
+    # 可选：依赖声明
+    "dependencies": ["network_utils"],  # 依赖的其他插件
+    "requirements": ["requests>=2.25.0"],  # Python包依赖
+    
+    # 可选：权限声明
+    "permissions": {
+        "weather.query": "查询天气权限",
+        "weather.admin": "天气管理权限"
+    },
+    
+    # 可选：配置默认值
+    "config": {
+        "enabled": True,
+        "api_key": "",
+        "cache_duration": 300
+    }
+}
+```
+
+### 3. 插件生命周期钩子
+
+插件可以定义生命周期钩子函数：
+
+```python
+async def plugin_load():
+    """插件加载时调用"""
+    print("插件加载完成")
+    # 初始化资源
+    return True
+
+async def plugin_unload():
+    """插件卸载时调用"""
+    print("插件卸载完成")
+    # 清理资源
+    return True
+```
+
+### 4. 依赖管理
+
+PluginManager 支持插件间的依赖关系：
+
+```python
+__plugin_meta__ = {
+    # ... 其他元数据 ...
+    "dependencies": ["database", "cache"],  # 依赖的其他插件
+    "requirements": [                        # Python包依赖
+        "sqlalchemy>=1.4.0",
+        "redis>=3.5.0"
+    ]
+}
+```
+
+### 5. 权限集成
+
+插件可以声明和使用权限：
+
+```python
+# 在元数据中声明权限
+__plugin_meta__ = {
+    # ... 其他元数据 ...
+    "permissions": {
+        "weather.query": "查询天气权限",
+        "weather.admin": "天气管理权限"
+    }
+}
+
+# 在命令中使用权限检查
+from Coral.filters import has_permission
+
+@on_command(
+    "weather_admin",
+    "天气管理命令",
+    filters=has_permission("weather.admin")
+)
+async def weather_admin_command(event):
+    return "管理员操作成功"
+```
+
+### 6. 性能监控
+
+PluginManager 提供详细的性能监控：
+
+```bash
+# 查看插件性能统计
+plugin stats example_plugin
+
+# 输出示例：
+Statistics for plugin: example_plugin
+----------------------------------------
+Version: 1.0.0
+Author: 开发者
+State: LOADED
+Load Status: SUCCESS
+
+Performance Metrics:
+  Load Time: 0.15s
+  Load Count: 1
+  Unload Count: 0
+  Last Loaded: 2026-02-07 23:15:30
+  Total Calls: 42
+  Avg Execution Time: 0.023s
+  Total Errors: 0
+  Last Error: None
+```
+
+### 7. 故障排除
+
+常见问题及解决方法：
+
+#### Q: 插件加载失败
+- 检查依赖是否满足：`plugin info <plugin_name>`
+- 查看错误信息：`plugin stats <plugin_name>`
+- 检查兼容性版本
+
+#### Q: 循环依赖错误
+- 检查插件依赖声明
+- 重构插件消除循环依赖
+- 使用延迟加载
+
+#### Q: 权限不足
+- 检查用户权限
+- 联系管理员分配权限
+- 使用 `plugin list` 查看可用插件
+
+### 8. 最佳实践
+
+1. **插件设计**：
+   - 保持功能单一
+   - 明确声明依赖
+   - 提供清晰的错误信息
+
+2. **性能优化**：
+   - 减少加载时间
+   - 使用异步操作
+   - 缓存常用数据
+
+3. **安全性**：
+   - 验证用户输入
+   - 检查权限
+   - 保护敏感数据
+
+4. **兼容性**：
+   - 声明兼容版本
+   - 向后兼容API
+   - 提供迁移指南
+
+## 开发建议与最佳实践
+
+### 1. 代码组织
+- 将大型插件拆分为多个模块
+- 使用清晰的目录结构
+- 分离业务逻辑和界面逻辑
+
+### 2. 错误处理
+- 使用 try-except 处理异常
+- 提供有意义的错误信息
+- 记录错误日志
+
+### 3. 配置管理
+- 使用配置系统管理设置
+- 提供默认配置值
+- 支持运行时配置更新
+
+### 4. 测试
+- 编写单元测试
+- 测试边界条件
+- 模拟外部依赖
+
+### 5. 文档
+- 编写清晰的文档
+- 提供使用示例
+- 更新变更日志
+
 ## 相关文档链接
 
 | 文档 | 描述 | 链接 |
 |------|------|------|
 | **插件注册** | 插件注册机制和流程 | [PluginReg.md](DevManual/PluginReg.md) |
+| **PluginManager** | 插件管理器详细文档 | [PluginManager.md](DevManual/PluginManager.md) |
 | **通信协议** | Coral 内部通信协议 | [Protocol.md](DevManual/Protocol.md) |
 | **API 文档** | API 接口和数据格式 | [api.md](DevManual/api.md) |
 | **权限系统** | 权限系统开发指南 | [PermSystem.md](DevManual/PermSystem.md) |

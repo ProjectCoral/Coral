@@ -1,7 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, Union, Dict, Any
-import time
 from .message import MessageBase, MessageChain, MessageSegment, UserInfo, GroupInfo
 from .response import BotResponse, MessageRequest, ActionRequest
 from .event import Event

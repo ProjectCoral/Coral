@@ -2,7 +2,7 @@
 Coral Core对外接口模块
 将核心功能的对外接口集中在此模块中，方便外部调用
 """
-from typing import Any, List, Union, Callable, Optional
+from typing import Any, List, Union, Optional
 from .protocol import *
 from .filters import *
 from .core import (
@@ -31,6 +31,8 @@ __all__ = [
     "on_event",
     "on_command",
     "on_function",
+    "on_load",
+    "on_unload",
     "get_bot",
     "get_bots_by_platform",
     # 过滤条件工厂函数
@@ -186,6 +188,40 @@ def on_function(name: str):
         register.register_function(name, func)
         return func
 
+    return decorator
+
+
+def on_load():
+    """
+    插件加载装饰器，在插件被加载时调用
+    
+    使用示例:
+        @on_load()
+        async def plugin_load():
+            # 插件加载时执行的初始化代码
+            print("插件正在加载...")
+    """
+    def decorator(func):
+        # 标记函数为加载钩子
+        func._is_load_hook = True
+        return func
+    return decorator
+
+
+def on_unload():
+    """
+    插件卸载装饰器，在插件被卸载时调用
+    
+    使用示例:
+        @on_unload()
+        async def plugin_unload():
+            # 插件卸载时执行的清理代码
+            print("插件正在卸载...")
+    """
+    def decorator(func):
+        # 标记函数为卸载钩子
+        func._is_unload_hook = True
+        return func
     return decorator
 
 

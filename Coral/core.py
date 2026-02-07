@@ -5,12 +5,15 @@ import datetime
 import logging
 import random
 import traceback
+import time
 from io import StringIO
 from typing import Dict, List, Tuple, Optional, Any, Generator
 from rich.console import Console
 from rich.traceback import Traceback
 
+from .plugin_manager.manager import PluginManager
 from .plugin_manager import PLUGINMANAGER_VERSION
+
 from .protocol import PROTOCOL_VERSION
 
 logger = logging.getLogger(__name__)
@@ -194,10 +197,13 @@ def global_exception_handler(exc_type: type, exc_value: Exception, exc_traceback
         buffer_console.print(f"\U000026A0 Plugin Directory not found.")
 
     try:
-        if hasattr(plugin_manager, 'plugins'):
-            buffer_console.print(f"\nLoaded plugins:\n")
-            for plugin in plugin_manager.plugins:
-                buffer_console.print(f"\t|\t{plugin}")
+        # Use new PluginManager API to get loaded plugins
+        if hasattr(plugin_manager, 'registry'):
+            loaded_plugins = plugin_manager.registry.get_loaded_plugins()
+            if loaded_plugins:
+                buffer_console.print(f"\nLoaded plugins:\n")
+                for plugin_info in loaded_plugins:
+                    buffer_console.print(f"\t|\t{plugin_info.name}")
     except (NameError, AttributeError):
         pass
     
@@ -338,6 +344,137 @@ from .event_bus import EventBus
 from .adapter import AdapterManager
 from .driver import DriverManager
 
+# Core Commands Class
+class CoreCommands:
+    """Core system commands integrated into Coral core."""
+    
+    def __init__(self, register: Register, config: Config, perm_system: PermSystem, plugin_manager: PluginManager):
+        self.register = register
+        self.config = config
+        self.perm_system = perm_system
+        self.plugin_manager = plugin_manager
+        self.init_time = None
+        
+    def register_commands(self):
+        """Register core commands."""
+        # 注册权限
+        self.perm_system.register_perm("core", "Core system permission")
+        self.perm_system.register_perm("core.help", "Permission to use help command")
+        self.perm_system.register_perm("core.clear", "Permission to clear cache")
+        self.perm_system.register_perm("core.status", "Permission to see system status")
+        
+        # 注册命令
+        self.register.register_command('help', 'Show help message', 
+                                     self.show_help, ["core", "core.help"])
+        self.register.register_command('clear', 'Clear cache', 
+                                     self.clear_cache, ["core", "core.clear"])
+        self.register.register_command('status', 'Show system status', 
+                                     self.status, ["core", "core.status"])
+        
+        # 注册初始化事件
+        self.register.register_event("coral_initialized", "init_time", 
+                                   self.init_timer, 1)
+    
+    async def init_timer(self, *args):
+        """Initialize timer when Coral starts."""
+        self.init_time = time.time()
+        logger.debug("Core commands timer initialized")
+        return None, False, 1
+    
+    async def show_help(self, event):
+        """Show help message with all available commands."""
+        try:
+            commands_list = []
+            for command_name in self.register.commands:
+                description = self.register.get_command_description(command_name)
+                commands_list.append(f"{command_name}: {description}")
+            
+            return "List of available commands:\n" + "\n".join(commands_list)
+        except Exception as e:
+            logger.error(f"Error generating help message: {e}")
+            return "Error: Unable to generate help message"
+    
+    async def clear_cache(self, event):
+        """Clear the cache directory."""
+        cache_dir = "cache"
+        try:
+            if os.path.exists(cache_dir):
+                cleared_count = 0
+                for file in os.listdir(cache_dir):
+                    file_path = os.path.join(cache_dir, file)
+                    try:
+                        os.remove(file_path)
+                        cleared_count += 1
+                    except Exception as e:
+                        logger.warning(f"Failed to remove {file_path}: {e}")
+                
+                logger.info(f"Cache cleared: {cleared_count} files removed")
+                return f"Cache cleared: {cleared_count} files removed"
+            else:
+                return "Cache directory does not exist"
+        except Exception as e:
+            logger.error(f"Error clearing cache: {e}")
+            return f"Error clearing cache: {e}"
+    
+    async def status(self, event):
+        """Show system status including version, plugins, permissions, and uptime."""
+        try:
+            message = "Status:\n"
+            
+            # Coral version
+            coral_version = self.config.get("coral_version", "Unknown")
+            message += f"Coral Version: {coral_version}\n"
+            
+            # Plugin information using new plugin list command
+            try:
+                # Create a mock event for plugin list command
+                from .protocol import CommandEvent, UserInfo, MessageChain, MessageSegment
+                
+                mock_event = CommandEvent(
+                    event_id=f"Console-{time.time()}",
+                    platform="system",
+                    self_id="Console",
+                    command="plugin",
+                    raw_message=MessageChain([MessageSegment(type="text", data="plugin list")]),
+                    user=UserInfo(platform="system", user_id="Console"),
+                    group=None,
+                    args=["list", "all"]
+                )
+                
+                # Use the new plugin command handler
+                response = await self.plugin_manager.commands.handle_plugin_command(mock_event)
+                if hasattr(response, 'message'):
+                    message += response.message.to_plain_text() + "\n"
+                else:
+                    message += "Plugins: Information unavailable\n"
+            except Exception as e:
+                logger.warning(f"Failed to get plugin information: {e}")
+                message += "Plugins: Error retrieving information\n"
+            
+            # Permission count
+            perm_count = len(self.perm_system.registered_perms)
+            message += f"Total registered {perm_count} permissions\n"
+            
+            # Uptime
+            if self.init_time is None:
+                message += "Uptime: System not fully initialized\n"
+            else:
+                uptime = time.time() - self.init_time
+                day, hour, minute, second = (
+                    uptime // (24 * 3600),
+                    uptime // 3600 % 24,
+                    uptime // 60 % 60,
+                    uptime % 60
+                )
+                message += f"Uptime: {int(day)} day(s) {int(hour)} hour(s) {int(minute)} minute(s) {int(second)} second(s)\n"
+            
+            message += "Hello from Coral!😋"
+            return message
+            
+        except Exception as e:
+            logger.error(f"Error generating status: {e}")
+            return f"Error generating status: {e}"
+
 # 初始化核心组件
 try:
     config = Config(CONFIG_FILE)
@@ -347,6 +484,10 @@ try:
     plugin_manager = PluginManager(register, config, perm_system, PLUGIN_DIR)
     adapter_manager = AdapterManager(event_bus, config)
     driver_manager = DriverManager(config, adapter_manager)
+    
+    # Register core commands
+    core_commands = CoreCommands(register, config, perm_system, plugin_manager)
+    core_commands.register_commands()
     
     logger.info("Coral Core initialized successfully")
 except Exception as e:

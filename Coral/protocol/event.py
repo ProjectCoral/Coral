@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Optional, Union, List, Dict, Any, TYPE_CHECKING
+from typing import Optional, Union, List, TYPE_CHECKING
 import time
 from .message import MessageBase, MessageChain, UserInfo, GroupInfo, MessageSegment
 from .types import EventType

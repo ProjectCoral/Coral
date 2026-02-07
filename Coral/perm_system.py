@@ -4,8 +4,7 @@ Coral 权限系统
 import os
 import json
 import logging
-from typing import Union, List, Dict, Any, Optional
-from collections import defaultdict
+from typing import Union, List, Dict
 from .protocol import CommandEvent
 
 logger = logging.getLogger(__name__)

@@ -156,3 +156,258 @@ async def hello():
 权限系统是 Coral 提供的插件权限管理系统，它可以让你更精细地控制用户对插件的访问权限。
 
 具体的权限控制逻辑，请参考 [权限系统](PermSystem.md)。
+
+---
+
+## 使用 PluginManager 进行插件管理
+
+Coral 提供了强大的 PluginManager 系统，用于管理插件的完整生命周期。以下是使用 PluginManager 的指南：
+
+### 1. 插件元数据声明
+
+每个插件都应该在 `__init__.py` 文件的顶部声明元数据：
+
+```python
+__plugin_meta__ = {
+    "name": "示例插件",
+    "version": "1.0.0",
+    "author": "开发者名称",
+    "description": "插件功能描述",
+    "compatibility": "250606",  # 与PluginManager兼容的最低版本
+    
+    # 可选：依赖声明
+    "dependencies": ["other_plugin"],  # 依赖的其他插件
+    "requirements": ["requests>=2.25.0"],  # Python包依赖
+    
+    # 可选：权限声明
+    "permissions": {
+        "example.command": "示例命令权限",
+        "example.admin": "管理员权限"
+    },
+    
+    # 可选：配置默认值
+    "config": {
+        "enabled": True,
+        "max_retries": 3
+    }
+}
+```
+
+### 2. 插件生命周期钩子
+
+插件可以定义生命周期钩子函数，这些函数会在插件加载和卸载时自动调用：
+
+```python
+async def plugin_load():
+    """插件加载时调用"""
+    print("插件加载完成")
+    # 初始化数据库连接、加载配置等
+    return True  # 返回True表示加载成功
+
+async def plugin_unload():
+    """插件卸载时调用"""
+    print("插件卸载完成")
+    # 关闭数据库连接、保存状态等
+    return True  # 返回True表示卸载成功
+```
+
+### 3. 使用 Protocol v3 新特性
+
+Coral Protocol v3 提供了更简洁的API，建议在新插件中使用：
+
+#### 事件便捷回复
+```python
+@on_message(filters=contains("你好"))
+async def greet_handler(event):
+    # 使用便捷回复方法
+    return event.reply("你好！", at_sender=True)
+```
+
+#### MessageChain 链式构建
+```python
+@on_command("welcome")
+async def welcome_command(event):
+    welcome_msg = MessageChain() \
+        .add_text("欢迎 ") \
+        .add_at(event.user.user_id) \
+        .add_text(" ！\n") \
+        .add_text("请查看群公告了解规则~") \
+        .add_image("http://example.com/welcome.jpg")
+    
+    return event.reply(welcome_msg)
+```
+
+#### MessageRequest 构建器
+```python
+@on_message(filters=contains("帮助"))
+async def help_handler(event):
+    return MessageRequest.builder(event) \
+        .text("可用命令：") \
+        .text("\n1. 帮助 - 显示此帮助") \
+        .text("\n2. 天气 <城市> - 查询天气") \
+        .set_at_sender() \
+        .build()
+```
+
+### 4. 插件管理命令
+
+PluginManager 提供了一套完整的插件管理命令：
+
+```bash
+# 加载插件
+plugin load example_plugin
+
+# 卸载插件
+plugin unload example_plugin
+
+# 启用/禁用插件
+plugin enable example_plugin
+plugin disable example_plugin
+
+# 列出插件
+plugin list all           # 所有插件
+plugin list loaded        # 已加载的插件
+plugin list enabled       # 已启用的插件
+plugin list disabled      # 已禁用的插件
+
+# 查看统计信息
+plugin stats              # 总体统计
+plugin stats example_plugin  # 特定插件统计
+
+# 查看插件信息
+plugin info example_plugin
+
+# 重新加载插件
+plugin reload example_plugin  # 重新加载单个插件
+plugin reload all             # 重新加载所有插件
+```
+
+### 5. 依赖管理
+
+插件可以声明依赖关系，PluginManager 会自动处理依赖解析：
+
+```python
+__plugin_meta__ = {
+    # ... 其他元数据 ...
+    "dependencies": ["database", "cache"],  # 依赖的其他插件
+    "requirements": [                        # Python包依赖
+        "sqlalchemy>=1.4.0",
+        "redis>=3.5.0"
+    ]
+}
+```
+
+### 6. 权限集成
+
+插件可以声明和使用权限系统：
+
+```python
+# 在元数据中声明权限
+__plugin_meta__ = {
+    # ... 其他元数据 ...
+    "permissions": {
+        "weather.query": "查询天气权限",
+        "weather.admin": "天气管理权限"
+    }
+}
+
+# 在命令中使用权限检查
+from Coral.filters import has_permission
+
+@on_command(
+    "weather_admin",
+    "天气管理命令",
+    filters=has_permission("weather.admin")
+)
+async def weather_admin_command(event):
+    return "管理员操作成功"
+```
+
+### 7. 完整插件示例
+
+```python
+"""
+天气查询插件示例
+"""
+
+__plugin_meta__ = {
+    "name": "天气查询插件",
+    "version": "2.0.0",
+    "author": "Coral开发者",
+    "description": "查询城市天气信息",
+    "compatibility": "250606",
+    "dependencies": [],
+    "requirements": ["requests>=2.25.0"],
+    "permissions": {
+        "weather.query": "查询天气权限",
+        "weather.admin": "天气管理权限"
+    }
+}
+
+from Coral import on_command, on_message, contains
+from Coral.protocol import MessageChain
+import asyncio
+
+# 插件生命周期钩子
+async def plugin_load():
+    print("天气插件加载完成")
+    return True
+
+async def plugin_unload():
+    print("天气插件卸载完成")
+    return True
+
+# 注册命令
+@on_command("weather", "查询天气")
+async def weather_command(event):
+    if not event.args:
+        return event.reply("请指定城市，例如：天气 北京")
+    
+    city = event.args[0]
+    weather_info = await get_weather(city)
+    
+    return event.reply(
+        MessageChain()
+            .add_text(f"{city}天气：")
+            .add_text(f"\n{weather_info}")
+    )
+
+# 注册消息处理器
+@on_message(filters=contains("天气怎么样"))
+async def weather_message(event):
+    # 从消息中提取城市
+    message = event.message.to_plain_text()
+    city = extract_city(message) or "北京"
+    
+    weather_info = await get_weather(city)
+    return event.reply(f"{city}的天气：{weather_info}")
+
+# 辅助函数
+async def get_weather(city: str) -> str:
+    """获取天气信息（模拟）"""
+    await asyncio.sleep(0.1)  # 模拟网络请求
+    weather_data = {
+        "北京": "☀️ 晴天 25°C 湿度 45%",
+        "上海": "🌧️ 小雨 22°C 湿度 85%",
+        "广州": "⛅ 多云 28°C 湿度 70%"
+    }
+    return weather_data.get(city, "未知城市")
+
+def extract_city(message: str) -> str:
+    """从消息中提取城市名"""
+    for city in ["北京", "上海", "广州", "深圳"]:
+        if city in message:
+            return city
+    return None
+```
+
+## 相关文档
+
+- [PluginManager 文档](./PluginManager.md) - 插件管理器详细指南
+- [Protocol 文档](./Protocol.md) - Coral通信协议
+- [插件开发指南](../PluginDev.md) - 插件开发完整指南
+- [权限系统](./PermSystem.md) - 权限系统使用指南
+- [过滤系统](./Filters.md) - 消息过滤系统
+- [API 文档](./api.md) - 完整API参考
+
+> **提示**：更多插件示例请参考 [plugins](https://github.com/ProjectCoral/Coral/blob/main/plugins) 目录。

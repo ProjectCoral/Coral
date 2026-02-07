@@ -360,11 +360,55 @@ await bot.to_user("123456").at_sender().send("Hello, user!")
 await bot.to_group("10001").recall_after(60).send("这条消息60秒后撤回")
 ```
 
-### 5. 插件示例
+### 5. 新的消息类型：Share分享
+
+Coral Protocol v3 新增了Share类型，支持多种分享内容：
 
 ```python
-from Coral import on_message, contains
-from Coral.protocol import MessageChain
+from Coral.protocol import Share, ShareType, MessageSegment
+
+# 网站分享
+website_share = Share(
+    type=ShareType.WEBSITE.value,
+    name="Coral GitHub",
+    url="https://github.com/ProjectCoral/Coral"
+)
+
+# 音乐分享
+music_share = Share(
+    type=ShareType.MUSIC.value,
+    name="Example Song",
+    platform="qq",  # 平台：qq, 163, xm
+    id="123456"
+)
+
+# 视频分享
+video_share = Share(
+    type=ShareType.VIDEO.value,
+    name="Example Video",
+    url="https://example.com/video.mp4"
+)
+
+# 位置分享
+location_share = Share(
+    type=ShareType.LOCATION.value,
+    lon=116.397128,  # 经度
+    lat=39.916527,   # 纬度
+    alt=50.0         # 海拔（可选）
+)
+
+# 使用便捷方法创建分享消息段
+segment1 = MessageSegment.share_website("Coral GitHub", "https://github.com/ProjectCoral/Coral")
+segment2 = MessageSegment.share_music("Example Song", "qq", "123456")
+segment3 = MessageSegment.share_video("Example Video", "https://example.com/video.mp4")
+segment4 = MessageSegment.share_location(116.397128, 39.916527, 50.0)
+```
+
+### 6. 完整插件示例
+
+```python
+from Coral import on_message, on_command, contains, starts_with
+from Coral.protocol import MessageChain, ShareType
 
 @on_message(filters=contains("天气"))
 async def weather_handler(event):
@@ -385,4 +429,104 @@ async def help_handler(event):
         .text("\n2. 帮助 - 显示帮助") \
         .set_at_sender() \
         .build()
+
+@on_command("share", "分享示例")
+async def share_command(event):
+    if not event.args:
+        return event.reply("请指定分享类型：website, music, video, location")
+    
+    share_type = event.args[0].lower()
+    
+    if share_type == "website":
+        return event.reply(
+            MessageChain()
+                .add_text("分享网站：")
+                .add_share_website("Coral项目", "https://github.com/ProjectCoral/Coral")
+        )
+    elif share_type == "music":
+        return event.reply(
+            MessageChain()
+                .add_text("分享音乐：")
+                .add_share_music("示例歌曲", "qq", "123456")
+        )
+    elif share_type == "video":
+        return event.reply(
+            MessageChain()
+                .add_text("分享视频：")
+                .add_share_video("示例视频", "https://example.com/video.mp4")
+        )
+    elif share_type == "location":
+        return event.reply(
+            MessageChain()
+                .add_text("分享位置：")
+                .add_share_location(116.397128, 39.916527, 50.0)
+        )
+    else:
+        return event.reply("未知的分享类型")
+
+# 主动发送消息示例
+async def send_notification():
+    from Coral import get_bot
+    
+    bot = get_bot("qq", "bot_123")
+    
+    # 发送群通知
+    await bot.to_group("10001").send("系统通知：服务器维护中")
+    
+    # 发送带撤回的私聊消息
+    await bot.to_user("123456").recall_after(300).send("这条消息5分钟后撤回")
+    
+    # 发送复合消息
+    await bot.to_group("10001").send(
+        MessageChain()
+            .add_text("欢迎新成员！")
+            .add_at("789012")
+            .add_text(" 请查看群公告")
+            .add_image("http://example.com/welcome.jpg")
+    )
 ```
+
+## 协议版本兼容性
+
+### 版本检查
+```python
+from Coral import PROTOCOL_VERSION
+from Coral.protocol import PROTOCOL_VERSION as PROTOCOL_VERSION_2
+
+print(f"框架协议版本: {PROTOCOL_VERSION}")  # 3
+print(f"协议模块版本: {PROTOCOL_VERSION_2}")  # 3
+```
+
+### 向后兼容性
+- **v3 → v2**: 大部分功能向后兼容，但新特性（如链式调用）在v2中不可用
+- **v2 → v1**: 需要适配器进行转换
+- **插件兼容性**: 插件应声明兼容的最低协议版本
+
+### 迁移指南
+1. **事件回复**: 使用 `event.reply()` 替代手动创建 `MessageRequest`
+2. **消息构建**: 使用 `MessageChain()` 链式调用替代列表拼接
+3. **主动发送**: 使用 `bot.to_user().send()` 链式调用替代传统方式
+4. **分享功能**: 使用新的 `Share` 类型和便捷方法
+
+## 常见问题
+
+### Q: 如何判断当前协议版本？
+A: 导入 `PROTOCOL_VERSION` 常量，当前值为 3。
+
+### Q: 新特性是否强制使用？
+A: 不是，传统API仍然可用，但建议使用新特性以获得更好的开发体验。
+
+### Q: 插件如何声明协议版本要求？
+A: 在插件元数据中添加 `protocol_version` 字段（可选），默认为v2兼容。
+
+### Q: Share类型是否所有平台都支持？
+A: 取决于适配器实现，部分平台可能不支持某些分享类型。
+
+### Q: 链式调用是否支持异步操作？
+A: 是的，所有链式调用方法都支持异步操作。
+
+## 相关链接
+- [插件开发指南](../PluginDev.md) - 使用新协议特性的插件开发示例
+- [API文档](./api.md) - 完整的API参考
+- [事件总线](./EventBus.md) - 事件系统详细说明
+- [过滤系统](./Filters.md) - 消息过滤系统使用指南

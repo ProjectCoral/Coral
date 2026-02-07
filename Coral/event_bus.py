@@ -2,7 +2,7 @@ from collections import defaultdict
 import asyncio
 import logging
 import time
-from typing import Union, Callable, Optional, Dict, Any, List
+from typing import Union, Callable, Optional, Any
 from dataclasses import dataclass
 from .protocol import (
     MessageRequest,
