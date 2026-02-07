@@ -23,8 +23,6 @@ B[plugin] --> A[plugin_manager]
 A --> C[register]
 C --> D[event_bus]
 B <--> D
-D <--> I[nonebot_layer]
-B <--> I
 E[perm_system] <--> C
 D <--> F[adapter_manager]
 F <-->  G[driver_manager]
@@ -34,13 +32,12 @@ H <--> J
 J <--> K[platform]
 ```
 
-- event_bus: 事件总线，用于管理事件，并触发事件。
-- plugin_manager: 插件管理器，用于管理插件。
-- register: 注册插件，将插件注册到插件管理器中。
-- nonebot_layer:  nonebot2 兼容层，用于强（行）兼（容）类 nonebot2 插件。
-- perm_system: 权限系统，用于管理权限。
-- adapter_manager: 适配器管理器，用于管理适配器。
-- driver_manager: 驱动管理器，用于管理驱动。
+- **event_bus**: 事件总线，用于管理事件，并触发事件。
+- **plugin_manager**: 插件管理器，用于管理插件的完整生命周期，支持依赖感知并发加载、权限集成和性能监控。
+- **register**: 注册插件，将插件注册到插件管理器中。
+- **perm_system**: 权限系统，用于管理权限。
+- **adapter_manager**: 适配器管理器，用于管理适配器。
+- **driver_manager**: 驱动管理器，用于管理驱动。
 
 > 如果你要开发插件，请阅读 [插件开发指南](PluginDev.md)。
 
@@ -99,4 +96,4 @@ graph LR
 - 请不要提交过于复杂的功能，保持简单易懂。
 - 至少确保你的代码通过测试。
 - 不要出现类循环依赖，例如 A 中的某个函数依赖 B，而 B 依赖 A。
-- 禁止与具体的平台直接关联，这会damage框架的可移植性。
+- 禁止与具体的平台直接关联，这会破坏框架的可移植性。

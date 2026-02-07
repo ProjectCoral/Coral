@@ -50,8 +50,9 @@
 
 - `help`：查看帮助信息
 - `status`：查看机器人状态
-- `plugins`：查看已加载的插件
-- `perms`：权限管理(详情请参阅 [权限系统用户文档](https://github.com/ProjectCoral/Coral/blob/main/docs/UserManual/PermSystem.md))
+- `plugin`：插件管理命令（详情请参阅 [插件管理用户文档](UserManual/PluginManagement.md)）
+- `plugins`：查看已加载的插件（旧版命令，建议使用 `plugin list`）
+- `perms`：权限管理（详情请参阅 [权限系统用户文档](UserManual/PermSystem.md)）
 
 ## dashboard 管理
 

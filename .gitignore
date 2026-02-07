@@ -154,6 +154,10 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# backups
+*.bak
+*.backup
+
 # folder
 venv
 memory

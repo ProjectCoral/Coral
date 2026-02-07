@@ -8,9 +8,6 @@ from .protocol import (
     CommandEvent,
     MessageEvent,
     NoticeEvent,
-    MessageRequest,
-    MessageChain,
-    MessageSegment,
     GenericEvent,
     MessageBase,
 )
@@ -134,14 +131,7 @@ class Register:
         )
 
         if event.command not in self.commands:
-            return MessageRequest(
-                platform=event.platform,
-                event_id=event.event_id,
-                self_id=event.self_id,
-                message=MessageChain([MessageSegment.text(self.no_command())]),
-                user=event.user,
-                group=event.group if event.group else None,
-            )
+            return event.reply(self.no_command())
 
         handler, permission = self.commands[event.command]
 
@@ -150,46 +140,19 @@ class Register:
             permission, event.user.user_id, event.group.group_id if event.group else -1
         ):
             # return "Permission denied"
-            return MessageRequest(
-                platform=event.platform,
-                event_id=event.event_id,
-                self_id=event.self_id,
-                message=MessageChain([MessageSegment.text("Permission denied")]),
-                user=event.user,
-                group=event.group if event.group else None,
-            )
+            return event.reply("Permission denied")
 
         try:
             result = await handler(event)
             if isinstance(result, MessageBase):
                 return result
             else:
-                return MessageRequest(
-                    platform=event.platform,
-                    event_id=event.event_id,
-                    self_id=event.self_id,
-                    message=MessageChain([MessageSegment.text(result)]),
-                    user=event.user,
-                    group=event.group if event.group else None,
-                )
+                return event.reply(result)
 
         except Exception as e:
             logger.exception(f"[red]Error executing command {event.command}: {e}[/]")
             self.crash_record("command", event.command, str(e), traceback.format_exc())
-            return MessageRequest(
-                platform=event.platform,
-                event_id=event.event_id,
-                self_id=event.self_id,
-                message=MessageChain(
-                    [
-                        MessageSegment.text(
-                            f"Error executing command {event.command}: {e}"
-                        )
-                    ]
-                ),
-                user=event.user,
-                group=event.group if event.group else None,
-            )
+            return event.reply(f"Error executing command {event.command}: {e}")
 
     def no_command(self):
         return "No command found"

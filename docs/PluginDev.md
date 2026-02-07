@@ -1,98 +1,84 @@
 # 插件开发指南
 
-目前， Coral 项目支持插件注册以下行为：
+## 快速导航
 
--  event 事件：当用户触发某些事件时，插件可以执行一些操作。
--  command 命令：当用户输入特定的命令时，插件可以执行一些操作。
--  fuction 函数：当代码调用特定的函数时，插件可以执行一些操作。
+- [插件开发规范](#插件开发规范)
+- [快速入门](#快速入门)
+  - [插件元数据](#1-插件元数据)
+  - [注册命令](#2-注册命令)
+  - [注册事件处理器](#3-注册事件处理器)
+  - [注册功能函数](#4-注册功能函数)
+  - [使用权限系统](#5-使用权限系统)
+- [插件示例](#智能问候插件示例)
+- [Protocol v3 新特性](#protocol-v3-新特性)
+- [开发建议与最佳实践](#开发建议与最佳实践)
+- [相关文档链接](#相关文档链接)
 
-你也可以参考 [plugins](https://github.com/ProjectCoral/Coral/blob/main/plugins) 中的插件示例，了解插件开发的基本流程。
-
-## 规范
-
-1. 插件的目录结构：
-
-    ```
-    plugin-name
-    ├── __init__.py  # 插件主文件
-    ├── * README.md  # 插件说明文档(可选)
-    ├── * requirements.txt  # 插件依赖(可选)
-    └── ...  # 其他文件(可选)
-    ```
-
-    - 插件的主文件必须为 `__init__.py`，插件名称自动取自目录名称。
-
-    - `requirements.txt` 用于声明插件依赖(可选)，若存在则会检查依赖是否满足并自动安装(我还是建议你搞个脚本，自动安装用的是 pip，网不好就抽风)。
-
-2. 插件元数据：
-
-   你可以在插件顶部声明元数据：
-
-    ```python
-    __plugin_meta__ = {
-        "name": "示例插件",
-        "version": "1.0.0",
-        "author": "开发者名称",
-        "description": "插件功能描述",
-        "conpatibility": "250606"  # 与PluginManager兼容的最低版本
-    }
-    ```
-
-3. 插件逻辑：
-
-    - 插件的主文件会在插件被注册时被调用，具体的注册方式请参考 [插件注册](DevManual/PluginReg.md)。
-
-    - 插件与框架通信时使用内部协议，详情请参考 [Protocol 文档](DevManual/Protocol.md)。
-  
-    - 返回的数据格式或是 API 请求数据请参考 [API 文档](DevManual/api.md)。
-
-    - 当编写插件时你可以选择接入 Coral 内置的权限系统(详情请参考 [权限系统开发文档](DevManual/PermSystem.md))，也可以自己实现权限系统。
-
-    - 我建议你将插件的 data 目录放在`./data/插件名`  目录下，这样可以方便管理插件数据。
-  
-    - 目前你可以引入以下模块：
-
-        ```python
-        from Coral import event_bus, register, config, perm_system, adapter_manager, driver_manager, ...
-        ```
-
-    > [!NOTE]
-    >
-    > - 我不想使用 Coral 提供的方法，但是对 nonebot2 的注册方式很熟悉。
-    >
-    > - 我有个 nonebot2 的项目，想迁移到 Coral 同时又不想改动太多代码。
-    >
-    > 有没有方法呢？
-    >
-    > 有的兄弟有的， Coral 强（行）兼（容）了 nonebot2 的注册方式，点击跳转 [Nonebot兼容层](DevManual/PluginReg_nonebot.md) 查看。
-
-4. 插件配置：
-
-    - 你可以选择使用 `config` 类注册全局配置，详情请参考 [调用全局配置](DevManual/UseConfig.md)。
-
-    - 如果需要自行添加配置加载逻辑，请尽量把配置信息放在 `./config/插件名`  目录下，<s>不要到处乱拉</s>。
-  
 ---
 
-## 快速入门
+## 插件开发规范
 
-### 1. 插件元数据
+### 1. 插件目录结构
+
+```
+plugin-name/
+├── __init__.py      # 插件主文件（必需）
+├── README.md        # 插件说明文档（可选）
+├── requirements.txt # 插件依赖声明（可选）
+└── ...              # 其他文件（可选）
+```
+
+- **插件主文件**：必须为 `__init__.py`，插件名称自动取自目录名称
+- **依赖管理**：`requirements.txt` 用于声明插件依赖(可选)，若存在则会检查依赖是否满足并自动安装(我还是建议你搞个脚本，自动安装用的是 pip，网不好就抽风)
+- **数据存储**：建议将插件数据放在 `./data/插件名/` 目录下
+- **配置存储**：建议将配置信息放在 `./config/插件名/` 目录下
+
+### 2. 插件元数据声明
 
 在插件顶部声明元数据：
+
 ```python
 __plugin_meta__ = {
     "name": "示例插件",
     "version": "1.0.0",
     "author": "开发者名称",
     "description": "插件功能描述",
-    "conpatibility": "250606"  # 与PluginManager兼容的版本
+    "compatibility": "250606"  # 与PluginManager兼容的最低版本
+}
+```
+
+### 3. 插件开发基础
+
+- **插件注册**：插件主文件在插件被注册时调用，详情参考 [插件注册文档](DevManual/PluginReg.md)
+- **通信协议**：插件与框架通信使用内部协议，详情参考 [Protocol 文档](DevManual/Protocol.md)
+- **API 规范**：返回数据格式或 API 请求数据参考 [API 文档](DevManual/api.md)
+- **权限系统**：可选择接入 Coral 内置权限系统，参考 [权限系统开发文档](DevManual/PermSystem.md)
+- **全局配置**：使用 `config` 类注册全局配置，参考 [调用全局配置](DevManual/UseConfig.md)
+
+> [!NOTE] 
+> 如果需要自行添加配置加载逻辑，请尽量把配置信息放在 `./config/插件名`  目录下，<s>不要到处乱拉</s>。
+
+---
+
+## 快速入门
+
+### 1. 插件元数据
+
+```python
+__plugin_meta__ = {
+    "name": "示例插件",
+    "version": "1.0.0",
+    "author": "开发者名称",
+    "description": "插件功能描述",
+    "compatibility": "250606"
 }
 ```
 
 ### 2. 注册命令
 
 ```python
-from Coral import on_command, MessageRequest
+from Coral import on_command
+from Coral.protocol import MessageRequest, MessageChain, MessageSegment
 
 @on_command(
     name="hello", 
@@ -100,36 +86,78 @@ from Coral import on_command, MessageRequest
     permission="example.hello"  # 可选权限要求
 )
 async def hello_command(event):
-    # return f"你好，{event.user.nickname}！" # 不建议直接返回字符串，虽然会转换，但不符合规范
     return MessageRequest(
-            platform=event.platform,
-            event_id=event.event_id,
-            self_id=event.self_id,
-            message=MessageChain([MessageSegment(type="text", data=f"你好，{event.user.nickname}！")]),
-            user=event.user,
-            group=event.group if event.group else None
-        ) # 使用MessageRequest/ActionRequest返回消息更加灵活
+        platform=event.platform,
+        event_id=event.event_id,
+        self_id=event.self_id,
+        message=MessageChain([
+            MessageSegment(type="text", data=f"你好，{event.user.nickname}！")
+        ]),
+        user=event.user,
+        group=event.group if event.group else None
+    )
 ```
 
-### 3. 注册事件处理器
+### 3. 注册事件处理器（使用过滤系统）
+
+Coral 提供了强大的消息过滤系统，简化插件开发：
+
+#### 3.1 基础过滤条件
 
 ```python
-from Coral import on_message, MessageRequest
+from Coral import on_message
+from Coral.protocol import MessageRequest
+from Coral.filters import contains, starts_with, from_user, in_group
 
+# 包含关键词过滤
+@on_message(name="问候处理器", filters=contains("你好"))
+async def greet_handler(event):
+    return MessageRequest(
+        platform=event.platform,
+        event_id=event.event_id,
+        self_id=event.self_id,
+        message=MessageChain([
+            MessageSegment(type="text", data=f"你好，{event.user.nickname}！")
+        ]),
+        user=event.user,
+        group=event.group if event.group else None
+    )
+```
+
+#### 3.2 组合过滤条件
+
+```python
+from Coral import on_message
+from Coral.filters import and_, or_, not_, has_permission
+
+# 逻辑与组合
 @on_message(
-    name="消息处理器", 
-    priority=3  # 优先级(1-10)，默认为5
+    name="精确匹配处理器",
+    filters=and_(
+        starts_with("天气"),
+        in_group([10001])
+    )
 )
-async def message_handler(event):
-    if "你好" in event.message.to_plain_text():
-        return MessageRequest(
-            platform=event.platform,
-            event_id=event.event_id,
-            self_id=event.self_id,
-            message=MessageChain([MessageSegment(type="text", data="你好！")]),
-            user=event.user,
-            group=event.group if event.group else None
-        )
+async def weather_handler(event):
+    city = event.message.text.replace("天气", "").strip()
+    return f"{city}的天气是..."
+```
+
+#### 3.3 高级过滤功能
+
+```python
+from Coral import on_message
+from Coral.filters import regex, rate_limit, message_type, custom
+import re
+
+# 正则表达式过滤
+@on_message(name="正则处理器", filters=regex(r"^查询\s+(\w+)$"))
+async def regex_handler(event):
+    match = re.match(r"^查询\s+(\w+)$", event.message.text)
+    if match:
+        keyword = match.group(1)
+        return f"查询关键词：{keyword}"
+    return None
 ```
 
 ### 4. 注册功能函数
@@ -138,82 +166,467 @@ async def message_handler(event):
 from Coral import on_function
 
 @on_function("get_weather")
-async def get_weather(city: str): # 供其他插件调用的功能函数
+async def get_weather(city: str):
     """获取城市天气"""
-    # 这里实现天气查询逻辑
-    return {"city":city, "weather":"晴天"}
+    return {"city": city, "weather": "晴天"}
 ```
 
 ### 5. 使用权限系统
 
 ```python
-from Coral import perm_require
+from Coral import on_command
 
-@on_command("admin", "管理员命令")
-@perm_require("admin.permission")  # 权限检查装饰器
+@on_command(
+    name = "admin",
+    description = "管理员命令",
+    permission="example.admin"
+)
 async def admin_command(event):
-    return "管理员操作成功" # 此处返回字符串自动转换为MessageRequest，也可以返回MessageRequest/ActionRequest对象
+    return "管理员操作成功"
 ```
 
-## 完整插件示例
+---
+
+## 智能问候插件示例
 
 ```python
 __plugin_meta__ = {
-    "name": "问候插件",
-    "version": "1.0.0",
-    "description": "提供基本的问候功能"
+    "name": "智能问候插件",
+    "version": "2.0.0",
+    "author": "Coral开发者",
+    "description": "使用过滤系统实现的智能问候插件",
+    "compatibility": "250606"
 }
 
-from Coral import on_command, on_message, on_function
+from Coral import on_message, on_command
+from Coral.filters import contains, starts_with, or_, and_, from_user, in_group, has_permission
+from Coral.protocol import MessageRequest, MessageChain, MessageSegment
+import datetime
 
-# 注册命令
-@on_command("greet", "打招呼命令")
-async def greet_command(event):
-    return f"你好，{event.user.nickname}！很高兴见到你！"
+# 基础问候 - 包含"你好"关键词
+@on_message(name="基础问候", filters=contains("你好"))
+async def basic_greet(event):
+    return MessageRequest(
+        platform=event.platform,
+        event_id=event.event_id,
+        self_id=event.self_id,
+        message=MessageChain([
+            MessageSegment.text(f"你好，{event.user.nickname}！")
+        ]),
+        user=event.user,
+        group=event.group
+    )
 
-# 注册消息事件处理器
-@on_message(priority=7)
-async def auto_greet(event):
+# 时间问候 - 多种问候语
+@on_message(
+    name="时间问候",
+    filters=or_(
+        contains("早上好"),
+        contains("早安"),
+        contains("下午好"),
+        contains("晚上好"),
+        contains("晚安")
+    )
+)
+async def time_greet(event):
     text = event.message.to_plain_text()
-    if "早上好" in text:
+    current_hour = datetime.datetime.now().hour
+    
+    if "早上好" in text or "早安" in text:
         return "早上好！今天也是充满活力的一天！"
+    elif "下午好" in text:
+        return "下午好！工作学习辛苦了！"
+    elif "晚上好" in text:
+        return "晚上好！今天过得怎么样？"
     elif "晚安" in text:
         return "晚安，做个好梦！"
+    
+    # 根据时间自动问候
+    if 5 <= current_hour < 12:
+        return "早上好！"
+    elif 12 <= current_hour < 18:
+        return "下午好！"
+    else:
+        return "晚上好！"
 
-# 注册功能函数
-@on_function("get_greeting")
-async def get_greeting(time_of_day: str):
-    """获取时间问候语"""
-    greetings = {
-        "morning": "早上好！",
-        "afternoon": "下午好！",
-        "evening": "晚上好！"
-    }
-    return greetings.get(time_of_day.lower(), "你好！")
+# 管理员专用命令 - 需要权限和指定用户
+@on_command(
+    name="admin_greet",
+    description="管理员问候命令",
+    permission="admin.greet",
+    filters=and_(
+        from_user([123456, 789012]),  # 只允许指定管理员
+        has_permission("admin.access")  # 需要管理员权限
+    )
+)
+async def admin_greet_command(event):
+    return f"管理员{event.user.nickname}，欢迎使用管理命令！"
+
+# 群组专用功能 - 只在指定群组生效
+@on_message(
+    name="群组欢迎",
+    filters=and_(
+        in_group([10001, 10002, 10003]),  # 只在指定群组
+        contains("新人")  # 包含"新人"关键词
+    )
+)
+async def group_welcome(event):
+    return f"欢迎新人加入{event.group.name if event.group else '本群'}！"
+
+# 速率限制示例 - 防止滥用
+@on_message(
+    name="查询功能",
+    filters=and_(
+        starts_with("查询"),
+        has_permission("query.allow")  # 需要查询权限
+    )
+)
+async def query_handler(event):
+    keyword = event.message.text.replace("查询", "").strip()
+    return f"正在查询：{keyword}，请稍候..."
 ```
 
-## 其他开发建议
+---
 
-1. **权限管理**：
-   - 使用 `perm_system.register_perm()` 注册权限
-   - 在命令中使用 `permission` 参数声明所需权限
+## Protocol v3 新特性
 
-2. **错误处理**：
-   ```python
-   try:
-       # 可能出错的代码
-   except Exception as e:
-       logger.error(f"插件错误: {e}")
-       return "抱歉，出错了！"
-   ```
+Coral Protocol v3 引入了多项新功能，使插件开发更加简洁高效：
 
-3. **资源管理**：
-   - 配置文件存储在 `./config/插件名/`
-   - 数据文件存储在 `./data/插件名/`
+### 1. 事件便捷回复
 
-4. **依赖声明**：
-   在 requirements.txt 中声明依赖：
-   ```plaintext
-   requests==2.28.2
-   beautifulsoup4==4.12.2
-   ```
+所有事件类都新增了 `reply()` 方法：
+
+```python
+@on_message(filters=contains("你好"))
+async def greet_handler(event):
+    # 简单回复
+    return event.reply("你好！")
+    
+    # 带选项的回复
+    return event.reply("你好！", at_sender=True, recall_duration=60)
+```
+
+### 2. MessageChain 链式构建
+
+使用链式调用构建复杂消息：
+
+```python
+@on_message(filters=contains("欢迎"))
+async def welcome_handler(event):
+    welcome_msg = MessageChain() \
+        .add_text("欢迎 ") \
+        .add_at(event.user.user_id) \
+        .add_text(" ！\n") \
+        .add_text("请查看群公告了解规则~") \
+        .add_image("http://example.com/welcome.jpg")
+    
+    return event.reply(welcome_msg)
+```
+
+### 3. MessageRequest 构建器
+
+使用构建器模式创建复杂消息请求：
+
+```python
+@on_message(filters=contains("帮助"))
+async def help_handler(event):
+    return MessageRequest.builder(event) \
+        .text("可用命令：") \
+        .text("\n1. 帮助 - 显示此帮助") \
+        .text("\n2. 天气 <城市> - 查询天气") \
+        .text("\n3. 时间 - 显示当前时间") \
+        .set_at_sender() \
+        .build()
+```
+
+### 4. Bot 链式调用
+
+主动发送消息时使用链式调用：
+
+```python
+from Coral import get_bot
+
+async def send_notification():
+    bot = get_bot("qq", "bot_123")
+    
+    # 链式调用发送通知
+    await bot.to_group("10001").send("系统通知：服务器维护中")
+    await bot.to_user("123456").recall_after(300).send("这条消息5分钟后撤回")
+```
+
+### 5. 天气查询插件示例
+
+```python
+__plugin_meta__ = {
+    "name": "天气查询插件",
+    "version": "2.0.0",
+    "description": "使用新Protocol功能的天气查询插件"
+}
+
+from Coral import on_command, on_message, contains
+from Coral.protocol import MessageChain
+
+@on_command("weather", "查询天气")
+async def weather_command(event):
+    if not event.args:
+        return event.reply("请指定城市，例如：天气 北京")
+    
+    city = event.args[0]
+    weather_data = {"北京": "☀️ 晴天 25°C", "上海": "🌧️ 小雨 22°C"}
+    weather = weather_data.get(city, "未知城市")
+    
+    return event.reply(
+        MessageChain()
+            .add_text(f"{city}天气：")
+            .add_text(f"\n{weather}")
+            .add_text("\n\n建议：")
+            .add_text("适合外出" if "晴" in weather else "建议带伞")
+    )
+```
+
+---
+
+## PluginManager 使用指南
+
+Coral PluginManager 是一个功能强大的插件管理系统，提供了完整的插件生命周期管理功能。以下是 PluginManager 的主要功能和使用方法：
+
+### 1. 插件管理命令
+
+PluginManager 提供了一套完整的插件管理命令：
+
+```bash
+# 加载插件
+plugin load example_plugin
+
+# 卸载插件
+plugin unload example_plugin
+
+# 启用插件
+plugin enable example_plugin
+
+# 禁用插件
+plugin disable example_plugin
+
+# 列出插件
+plugin list all           # 所有插件
+plugin list loaded        # 已加载的插件
+plugin list enabled       # 已启用的插件
+plugin list disabled      # 已禁用的插件
+
+# 查看统计信息
+plugin stats              # 总体统计
+plugin stats example_plugin  # 特定插件统计
+
+# 查看插件信息
+plugin info example_plugin
+
+# 重新加载插件
+plugin reload example_plugin  # 重新加载单个插件
+plugin reload all             # 重新加载所有插件
+
+# 获取帮助
+plugin help                  # 所有命令帮助
+plugin help load             # 特定命令帮助
+```
+
+### 2. 插件元数据规范
+
+插件必须声明元数据，支持依赖管理和权限声明：
+
+```python
+__plugin_meta__ = {
+    "name": "天气查询插件",
+    "version": "2.0.0",
+    "author": "开发者名称",
+    "description": "查询城市天气信息",
+    "compatibility": "250606",  # 兼容的PluginManager版本
+    
+    # 可选：依赖声明
+    "dependencies": ["network_utils"],  # 依赖的其他插件
+    "requirements": ["requests>=2.25.0"],  # Python包依赖
+    
+    # 可选：权限声明
+    "permissions": {
+        "weather.query": "查询天气权限",
+        "weather.admin": "天气管理权限"
+    },
+    
+    # 可选：配置默认值
+    "config": {
+        "enabled": True,
+        "api_key": "",
+        "cache_duration": 300
+    }
+}
+```
+
+### 3. 插件生命周期钩子
+
+插件可以定义生命周期钩子函数：
+
+```python
+async def plugin_load():
+    """插件加载时调用"""
+    print("插件加载完成")
+    # 初始化资源
+    return True
+
+async def plugin_unload():
+    """插件卸载时调用"""
+    print("插件卸载完成")
+    # 清理资源
+    return True
+```
+
+### 4. 依赖管理
+
+PluginManager 支持插件间的依赖关系：
+
+```python
+__plugin_meta__ = {
+    # ... 其他元数据 ...
+    "dependencies": ["database", "cache"],  # 依赖的其他插件
+    "requirements": [                        # Python包依赖
+        "sqlalchemy>=1.4.0",
+        "redis>=3.5.0"
+    ]
+}
+```
+
+### 5. 权限集成
+
+插件可以声明和使用权限：
+
+```python
+# 在元数据中声明权限
+__plugin_meta__ = {
+    # ... 其他元数据 ...
+    "permissions": {
+        "weather.query": "查询天气权限",
+        "weather.admin": "天气管理权限"
+    }
+}
+
+# 在命令中使用权限检查
+from Coral.filters import has_permission
+
+@on_command(
+    "weather_admin",
+    "天气管理命令",
+    filters=has_permission("weather.admin")
+)
+async def weather_admin_command(event):
+    return "管理员操作成功"
+```
+
+### 6. 性能监控
+
+PluginManager 提供详细的性能监控：
+
+```bash
+# 查看插件性能统计
+plugin stats example_plugin
+
+# 输出示例：
+Statistics for plugin: example_plugin
+----------------------------------------
+Version: 1.0.0
+Author: 开发者
+State: LOADED
+Load Status: SUCCESS
+
+Performance Metrics:
+  Load Time: 0.15s
+  Load Count: 1
+  Unload Count: 0
+  Last Loaded: 2026-02-07 23:15:30
+  Total Calls: 42
+  Avg Execution Time: 0.023s
+  Total Errors: 0
+  Last Error: None
+```
+
+### 7. 故障排除
+
+常见问题及解决方法：
+
+#### Q: 插件加载失败
+- 检查依赖是否满足：`plugin info <plugin_name>`
+- 查看错误信息：`plugin stats <plugin_name>`
+- 检查兼容性版本
+
+#### Q: 循环依赖错误
+- 检查插件依赖声明
+- 重构插件消除循环依赖
+- 使用延迟加载
+
+#### Q: 权限不足
+- 检查用户权限
+- 联系管理员分配权限
+- 使用 `plugin list` 查看可用插件
+
+### 8. 最佳实践
+
+1. **插件设计**：
+   - 保持功能单一
+   - 明确声明依赖
+   - 提供清晰的错误信息
+
+2. **性能优化**：
+   - 减少加载时间
+   - 使用异步操作
+   - 缓存常用数据
+
+3. **安全性**：
+   - 验证用户输入
+   - 检查权限
+   - 保护敏感数据
+
+4. **兼容性**：
+   - 声明兼容版本
+   - 向后兼容API
+   - 提供迁移指南
+
+## 开发建议与最佳实践
+
+### 1. 代码组织
+- 将大型插件拆分为多个模块
+- 使用清晰的目录结构
+- 分离业务逻辑和界面逻辑
+
+### 2. 错误处理
+- 使用 try-except 处理异常
+- 提供有意义的错误信息
+- 记录错误日志
+
+### 3. 配置管理
+- 使用配置系统管理设置
+- 提供默认配置值
+- 支持运行时配置更新
+
+### 4. 测试
+- 编写单元测试
+- 测试边界条件
+- 模拟外部依赖
+
+### 5. 文档
+- 编写清晰的文档
+- 提供使用示例
+- 更新变更日志
+
+## 相关文档链接
+
+| 文档 | 描述 | 链接 |
+|------|------|------|
+| **插件注册** | 插件注册机制和流程 | [PluginReg.md](DevManual/PluginReg.md) |
+| **PluginManager** | 插件管理器详细文档 | [PluginManager.md](DevManual/PluginManager.md) |
+| **通信协议** | Coral 内部通信协议 | [Protocol.md](DevManual/Protocol.md) |
+| **API 文档** | API 接口和数据格式 | [api.md](DevManual/api.md) |
+| **权限系统** | 权限系统开发指南 | [PermSystem.md](DevManual/PermSystem.md) |
+| **过滤系统** | 消息过滤系统使用 | [Filters.md](DevManual/Filters.md) |
+| **全局配置** | 配置系统使用方法 | [UseConfig.md](DevManual/UseConfig.md) |
+| **适配器开发** | 适配器开发指南 | [AdapterDev.md](DevManual/AdapterDev.md) |
+| **驱动开发** | 驱动开发指南 | [DriverDev.md](DevManual/DriverDev.md) |
+| **事件总线** | 事件总线系统 | [EventBus.md](DevManual/EventBus.md) |
+
+> **提示**：更多开发资源请参考 [plugins](https://github.com/ProjectCoral/Coral/blob/main/plugins) 中的插件示例。
