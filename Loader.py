@@ -19,7 +19,6 @@ from Coral import (
 
 from Coral.protocol import *
 
-import utils.commands
 import utils.install_requirements
 import utils.chat_command
 
