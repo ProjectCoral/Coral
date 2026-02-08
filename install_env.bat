@@ -40,7 +40,6 @@ if errorlevel 1 (
 ) else (
     set python_installed=1
 )
-python --version|findstr /r /i "3.12" > NUL && echo %YW%[WARN]%WT% 你的python可能不兼容pytorch，请卸载后重新打开程序。 && exit
 git --version
 if errorlevel 1 (
     set git_installed=0
@@ -52,13 +51,6 @@ if errorlevel 1 (
     set gcc_installed=0
 ) else (
     set gcc_installed=1
-)
-nvcc --version
-if errorlevel 1 (
-    set cuda_installed=0
-) else (
-    echo %GN%[INFO]%WT% CUDA已安装，将安装PyTorch-cuda版本。
-    set cuda_installed=1
 )
 echo %GN%[INFO]%WT% 请检查列出的配置是否正确，如有错误请修改install_env.bat中的config。
 echo.
@@ -86,11 +78,6 @@ if %gcc_installed%==0 (
 ) else (
     echo %GN%    gcc已安装。
 )
-if %cuda_installed%==0 (
-    echo %YW%    未找到CUDA，PyTorch将只安装CPU版本。%WT%
-) else (
-    echo %GN%    CUDA已安装,将安装PyTorch-cuda版本。%WT%
-)
 echo.
 install_env\sleepx -p "如果要停止安装，请在10秒内按下任意键..." -k 10
 if errorlevel 1 (
@@ -111,15 +98,12 @@ if %gcc_installed%==0 (
 )
 if %enable_venv%==1 (
     echo %GN%[INFO]%WT% 启用python venv...
-    if not exist Muice\Scripts\activate.bat python -m venv Muice
-    call Muice\Scripts\activate.bat
+    if not exist venv\Scripts\activate.bat python -m venv venv
+    call venv\Scripts\activate.bat
 )
 echo %GN%[INFO]%WT% 安装依赖...
 ping -n 2 127.1 > nul
 call :install_req
-echo %GN%[INFO]%WT% 安装PyTorch...
-ping -n 2 127.1 > nul
-call :install_pytorch
 echo %GN%[INFO]%WT% 安装extra包...
 ping -n 2 127.1 > nul
 if not "%pip_extra_install_packages%"=="" (
@@ -129,38 +113,15 @@ echo %GN%[INFO]%WT% 安装完成！
 echo %GN%[INFO]%WT% 正在生成启动脚本...
 ping -n 2 127.1 > nul
 echo @echo off>start.bat
-if %enable_venv%==1 echo call Muice\Scripts\activate.bat>>start.bat
+if %enable_venv%==1 echo call venv\Scripts\activate.bat>>start.bat
 echo python main.py>>start.bat
 echo pause>>start.bat
 echo %GN%[INFO]%WT% 你可以使用start.bat启动main.py。
-if %enable_venv%==1 echo %GN%[INFO]%WT% 若要激活环境，使用"call Muice\Scripts\activate.bat"。
+if %enable_venv%==1 echo %GN%[INFO]%WT% 若要激活环境，使用"call venv\Scripts\activate.bat"。
 echo %GN%[INFO]%WT% 按任意键退出。
 pause>nul
 exit
 
-
-
-:install_pytorch
-if %cuda_installed%==0 goto :eof
-echo %GN%[INFO]%WT% 检测CUDA版本...
-set cudaver=
-nvcc --version|findstr /r /i "11.8" > NUL && set cudaver=cu118
-nvcc --version|findstr /r /i "12.1" > NUL && set cudaver=cu121
-nvcc --version|findstr /r /i "12.4" > NUL && set cudaver=cu124
-if "%cudaver%"=="" (
-    echo %RD%[ERROR]%WT% 未知或不支持的CUDA版本，请卸载并安装11.8/12.1/12.4版本的CUDA。
-    echo %WT%按任意键退出。
-    pause>nul
-    exit
-)
-pip install torch==2.4.1+%cudaver% torchvision torchaudio -i %pip_source% --extra-index-url https://download.pytorch.org/whl/%cudaver%
-if errorlevel 1 (
-    echo %RD%[ERROR]%WT% 安装PyTorch失败。
-    echo %WT%按任意键退出。
-    pause>nul
-    exit
-)
-goto :eof
 
 :install_req
 pip install -r requirements.txt -i %pip_source%

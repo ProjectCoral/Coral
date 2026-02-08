@@ -1,7 +1,5 @@
 import os
-import re
 import sys
-import subprocess
 import logging
 import shutil
 import datetime
@@ -48,6 +46,8 @@ logging.debug("--------------------------------------------")
 
 # 初始化
 if not os.path.exists("config.json"):
+    import re
+    import subprocess
     logging.info("Checking requirements, this may take a while...")
     with open("./requirements.txt", "r", encoding="utf-8") as f:
         lines = f.readlines()

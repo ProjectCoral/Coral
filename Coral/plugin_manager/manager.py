@@ -122,7 +122,7 @@ class PluginManager:
             loaded_plugins: Set[str] = set()
             
             for layer_index, layer_plugins in enumerate(load_layers):
-                logger.info(f"Loading plugin layer {layer_index + 1}/{len(load_layers)}: {layer_plugins}")
+                logger.debug(f"Loading plugin layer {layer_index + 1}/{len(load_layers)}: {layer_plugins}")
                 
                 # Prepare plugins for this layer
                 plugins_to_load = []
@@ -407,7 +407,7 @@ class PluginManager:
                 
                 # 按层卸载
                 for layer_index, layer_plugins in enumerate(unload_layers):
-                    logger.info(f"Unloading plugin layer {layer_index + 1}/{len(unload_layers)}: {layer_plugins}")
+                    logger.debug(f"Unloading plugin layer {layer_index + 1}/{len(unload_layers)}: {layer_plugins}")
                     
                     # 卸载这一层的所有插件
                     for plugin_name in layer_plugins:

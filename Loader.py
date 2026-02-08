@@ -2,7 +2,7 @@ import os
 import time
 import logging
 import asyncio
-from typing import Union, List
+from datetime import datetime
 from pyfiglet import Figlet
 from colorama import Fore
 
@@ -27,8 +27,13 @@ logger = logging.getLogger(__name__)
 
 class CoralLoader:
     def __init__(self):
-        textrender = Figlet(font="larry3d")
-        print(Fore.GREEN + textrender.renderText("Project Coral") + Fore.RESET)
+        textrender = Figlet(font="slant")
+        print(Fore.YELLOW + textrender.renderText("Project Coral") + Fore.RESET)
+        built_time = datetime.fromtimestamp(os.path.getmtime('./Coral/core.py')).strftime("%Y-%m-%d %H:%M:%S")
+        logger.info(f"Core version: [yellow]{CORAL_VERSION}[/], built on {built_time}")
+        if CORAL_VERSION.endswith("early_development"):
+            logger.warning("You are running an early development version of Coral. "
+                           "This version may highly unstable and is not recommended for production use.")
         asyncio.run(self.initialize())
 
     async def initialize(self):
@@ -126,7 +131,7 @@ class CoralLoader:
             GenericEvent(name="coral_shutdown", platform="coral")
         )
         
-        # 卸载所有插件（执行插件的on_unload钩子）
+        # 卸载所有插件
         logger.info("Unloading all plugins...")
         try:
             success, message = await self.plugin_manager.unload_all_plugins()
