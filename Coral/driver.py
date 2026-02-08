@@ -213,7 +213,7 @@ class DriverManager:
         ]
         
         if not driver_modules:
-            logger.info("No driver modules found")
+            logger.debug("No driver modules found")
             return
 
         loaded_count = 0
@@ -290,7 +290,7 @@ class DriverManager:
             if driver_name in self._driver_refs:
                 del self._driver_refs[driver_name]
             
-            logger.info(f"Successfully unloaded driver: {driver_name}")
+            logger.debug(f"Successfully unloaded driver: {driver_name}")
             return True
             
         except Exception as e:

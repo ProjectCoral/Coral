@@ -20,7 +20,7 @@ class Config:
 
     def load_config(self, config):
         if not os.path.exists(config):
-            logger.warning("[yellow]Config file not found, creating a default one.[/]")
+            logger.warning("[yellow]Config file not found, creating default config.[/]")
             self.config = main_config_template
         else:
             try:
@@ -28,7 +28,7 @@ class Config:
                     self.config = json.load(f)
             except Exception as e:
                 logger.exception(f"[red]Error loading config file: {e}[/]")
-                logger.warning("[yellow]Backing up and creating a default one.[/]")
+                logger.warning("[yellow]Backing up and creating default config.[/]")
                 os.rename(config, config + ".bak")
                 self.config = main_config_template
 

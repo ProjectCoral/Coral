@@ -60,7 +60,7 @@ class BaseAdapter(ABC):
                     logger.warning(f"Failed to register bot in global registry: {e}")
             logger.info(f"Created bot {self_id} for connected driver")
         else:
-            logger.info(f"Bot {self_id} already exists for connected driver")
+            logger.warning(f"Bot {self_id} already exists for connected driver")
 
     def remove_bot_for_driver(self, driver):
         """为断开连接的驱动器移除Bot对象"""
@@ -80,7 +80,7 @@ class BaseAdapter(ABC):
             del self.bots[self_id]
             logger.info(f"Removed bot {self_id} for disconnected driver")
         else:
-            logger.info(f"Bot {self_id} not found for disconnected driver")
+            logger.warning(f"Bot {self_id} not found for disconnected driver")
 
     def add_bot(self, self_id: str, config: Dict[str, Any] = {}, driver: Any = None) -> Bot:
         """添加机器人实例"""
@@ -91,7 +91,7 @@ class BaseAdapter(ABC):
             config=config
         )
         self.bots[self_id] = bot
-        logger.info(f"Added bot {self_id} for platform {bot.platform}")
+        logger.debug(f"Added bot {self_id} for platform {bot.platform}")
         return bot
 
     def get_bot(self, self_id: str) -> Optional[Bot]:
@@ -316,7 +316,7 @@ class AdapterManager:
         ]
         
         if not adapter_modules:
-            logger.info("No adapter modules found")
+            logger.debug("No adapter modules found")
             return
 
         loaded_count = 0
@@ -391,7 +391,7 @@ class AdapterManager:
             for bot_id in bots_to_remove:
                 del self.bots[bot_id]
             
-            logger.info(f"Successfully unloaded adapter: {adapter_protocol}")
+            logger.debug(f"Successfully unloaded adapter: {adapter_protocol}")
             return True
             
         except Exception as e:

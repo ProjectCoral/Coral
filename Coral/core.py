@@ -408,7 +408,7 @@ class CoreCommands:
                     except Exception as e:
                         logger.warning(f"Failed to remove {file_path}: {e}")
                 
-                logger.info(f"Cache cleared: {cleared_count} files removed")
+                logger.debug(f"Cache cleared: {cleared_count} files removed")
                 return f"Cache cleared: {cleared_count} files removed"
             else:
                 return "Cache directory does not exist"

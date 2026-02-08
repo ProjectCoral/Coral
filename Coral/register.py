@@ -35,7 +35,7 @@ class Register:
 
     def hook_perm_system(self, perm_system: PermSystem):
         self.perm_system = perm_system
-        logger.info("Permission system has been hooked with Register.")
+        logger.debug("Permission system has been hooked with Register.")
 
     def register_event(
         self, event_name: str, listener_name: str, function: Callable, priority: int = 1

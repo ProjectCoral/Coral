@@ -380,7 +380,7 @@ async def run_dashboard(dashboard_config: Dict[str, Any]):
     Args:
         dashboard_config: Dashboard配置
     """
-    logger.info("启动Coral Dashboard...")
+    logger.debug("启动Coral Dashboard...")
     
     # 获取主机和端口配置
     host = "0.0.0.0" if dashboard_config.get("listen", True) else "127.0.0.1"

@@ -118,7 +118,7 @@ class ChatCommand:
                         group=message.group if message.group else None
                     )
                 )
-                logger.info("Stop command executed")
+                logger.debug("Stop command executed")
             except Exception as e:
                 logger.error(f"Error publishing stop event: {e}")
         

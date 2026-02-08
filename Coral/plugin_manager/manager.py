@@ -62,7 +62,7 @@ class PluginManager:
         # Create plugin directory if it doesn't exist
         if not os.path.exists(self.plugin_dir):
             os.makedirs(self.plugin_dir, exist_ok=True)
-            logger.info(f"Created plugin directory: {self.plugin_dir}")
+            logger.debug(f"Created plugin directory: {self.plugin_dir}")
     
     async def load_all_plugins(self) -> Tuple[bool, str]:
         """
@@ -87,7 +87,7 @@ class PluginManager:
             # 1. Discover and parse all plugin metadata
             plugin_dirs = self.metadata.get_enabled_plugin_dirs(self.plugin_dir)
             if not plugin_dirs:
-                logger.info("No plugins found to load")
+                logger.debug("No plugins found to load")
                 return True, "No plugins found to load"
             
             plugins_meta = {}
@@ -100,7 +100,7 @@ class PluginManager:
                     self.registry.register_plugin(plugin_name, meta)
             
             if not plugins_meta:
-                logger.info("No valid plugins found")
+                logger.debug("No valid plugins found")
                 return True, "No valid plugins found"
             
             # 2. Build dependency graph
@@ -415,7 +415,7 @@ class PluginManager:
                             success, message = await self.unload_plugin(plugin_name)
                             if success:
                                 total_unloaded += 1
-                                logger.info(f"✓ Unloaded plugin {plugin_name}")
+                                logger.debug(f"✓ Unloaded plugin {plugin_name}")
                             else:
                                 total_failed += 1
                                 errors.append(f"{plugin_name}: {message}")
@@ -427,7 +427,7 @@ class PluginManager:
                     success, message = await self.unload_plugin(plugin_name)
                     if success:
                         total_unloaded += 1
-                        logger.info(f"✓ Unloaded plugin {plugin_name}")
+                        logger.debug(f"✓ Unloaded plugin {plugin_name}")
                     else:
                         total_failed += 1
                         errors.append(f"{plugin_name}: {message}")
@@ -438,7 +438,7 @@ class PluginManager:
                 success, message = await self.unload_plugin(plugin_name)
                 if success:
                     total_unloaded += 1
-                    logger.info(f"✓ Unloaded plugin {plugin_name}")
+                    logger.debug(f"✓ Unloaded plugin {plugin_name}")
                 else:
                     total_failed += 1
                     errors.append(f"{plugin_name}: {message}")
@@ -736,7 +736,7 @@ class PluginManager:
     
     def _log_loading_metrics(self, total_loaded: int, total_failed: int, total_time: float):
         """Log loading performance metrics."""
-        logger.info(
+        logger.debug(
             f"Plugin loading completed: "
             f"Loaded: {total_loaded}, Failed: {total_failed}, "
             f"Total time: {total_time:.2f}s"

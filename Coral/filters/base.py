@@ -54,8 +54,8 @@ class EventFilter(ABC):
             # 只记录一次警告，避免重复日志
             if not self._warning_logged:
                 logger.warning(
-                    f"过滤器 {self.__class__.__name__} 不支持事件类型 {event_type.__name__}，"
-                    f"将默认返回True。过滤器设计用于：{[t.__name__ for t in self.supported_event_types]}"
+                    f"Filter {self.__class__.__name__} does not support event type {event_type.__name__}, "
+                    f"will return True by default. Filter designed for: {[t.__name__ for t in self.supported_event_types]}"
                 )
                 self._warning_logged = True
             return True

@@ -92,8 +92,8 @@ class PermSystem:
             else:
                 return f"错误: 未知子命令 '{subcommand}'\n{self._get_help_message()}"
         except Exception as e:
-            logger.error(f"权限命令执行错误: {e}")
-            return f"错误: {str(e)}"
+            logger.error(f"Permission command execution error: {e}")
+            return f"Error: {str(e)}"
     
     def _get_help_message(self) -> str:
         """获取帮助信息"""
@@ -111,7 +111,7 @@ class PermSystem:
     def load_permissions(self):
         """加载权限数据"""
         if not os.path.exists(self.perm_file):
-            logger.info("权限文件不存在，创建新的权限文件")
+            logger.info("Permission file does not exist, creating new permission file")
             self.user_perms = {}
             self.group_perms = {}
             self.save_permissions()
@@ -121,9 +121,9 @@ class PermSystem:
                     data = json.load(f)
                     self.user_perms = data.get('user_perms', {})
                     self.group_perms = data.get('group_perms', {})
-                logger.info(f"权限数据已加载，用户数: {len(self.user_perms)}, 群组数: {len(self.group_perms)}")
+                logger.info(f"Permission data loaded, users: {len(self.user_perms)}, groups: {len(self.group_perms)}")
             except Exception as e:
-                logger.error(f"加载权限文件失败: {e}")
+                logger.error(f"Failed to load permission file: {e}")
                 self.user_perms = {}
                 self.group_perms = {}
     
@@ -137,7 +137,7 @@ class PermSystem:
             with open(self.perm_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            logger.error(f"保存权限文件失败: {e}")
+            logger.error(f"Failed to save permission file: {e}")
     
     def register_perm(self, perm_name: str, perm_desc: str):
         """
@@ -148,9 +148,9 @@ class PermSystem:
             perm_desc: 权限描述
         """
         if perm_name in self.registered_perms:
-            logger.warning(f"权限 '{perm_name}' 已注册，将覆盖原有描述")
+            logger.warning(f"Permission '{perm_name}' already registered, overwriting description")
         self.registered_perms[perm_name] = perm_desc
-        logger.debug(f"注册权限: {perm_name} - {perm_desc}")
+        logger.debug(f"Registered permission: {perm_name} - {perm_desc}")
     
     def add_perm(self, perm_name: str, user_id: str, group_id: str = "-1") -> str:
         """
@@ -297,7 +297,7 @@ class PermSystem:
         
         # 检查权限是否已注册
         if perm_name not in self.registered_perms:
-            logger.warning(f"权限 '{perm_name}' 未注册，跳过检查")
+            logger.warning(f"Permission '{perm_name}' not registered, skipping check")
             return True
         
         # 1. 检查用户全局权限

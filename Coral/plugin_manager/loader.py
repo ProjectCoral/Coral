@@ -92,7 +92,7 @@ class PluginLoader:
             
             # Record successful load
             load_time = time.time() - start_time
-            logger.info(f"Successfully loaded plugin {plugin_name} in {load_time:.2f}s")
+            logger.debug(f"Successfully loaded plugin {plugin_name} in {load_time:.2f}s")
             
             # Cache the module
             self._loaded_modules[plugin_name] = module
@@ -344,7 +344,7 @@ class PluginLoader:
             if module_key in sys.modules:
                 del sys.modules[module_key]
             
-            logger.info(f"Successfully unloaded plugin {plugin_name}")
+            logger.debug(f"Successfully unloaded plugin {plugin_name}")
             return True
             
         except Exception as e:

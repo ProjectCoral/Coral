@@ -136,7 +136,7 @@ class CoralLoader:
         try:
             success, message = await self.plugin_manager.unload_all_plugins()
             if success:
-                logger.info(f"✓ {message}")
+                logger.debug(f"✓ {message}")
             else:
                 logger.warning(f"⚠ {message}")
         except Exception as e:

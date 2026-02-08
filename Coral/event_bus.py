@@ -211,7 +211,7 @@ class EventBus:
                             logger.error(f"Result handler error: {e}")
                             self._metrics.total_errors += 1
                     else:
-                        logger.warning(f"No subscribers for result type: {result_type.__name__}")
+                        logger.debug(f"No subscribers for result type: {result_type.__name__}")
                         logger.debug(f"Available subscriber types: {[k.__name__ for k in self._subscribers.keys()]}")
                     
                     self._result_queue.task_done()

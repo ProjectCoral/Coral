@@ -80,7 +80,7 @@ class PluginRegistry:
         # Create plugin directory if it doesn't exist
         if not os.path.exists(self.plugin_dir):
             os.makedirs(self.plugin_dir, exist_ok=True)
-            logger.info(f"Created plugin directory: {self.plugin_dir}")
+            logger.debug(f"Created plugin directory: {self.plugin_dir}")
     
     def register_plugin(self, name: str, meta: PluginMeta) -> PluginEntry:
         """
