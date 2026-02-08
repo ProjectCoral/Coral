@@ -18,9 +18,17 @@ logger = logging.getLogger(__name__)
 
 
 class Register:
+    """注册器类，用于管理命令、事件和函数的注册与执行"""
+    
     event_bus: EventBus
 
     def __init__(self, event_bus: EventBus):
+        """
+        初始化注册器
+        
+        Args:
+            event_bus: 事件总线实例
+        """
         self.event_bus = event_bus
         self.commands = {}  # 命令名: (handler, permission)
         self.command_descriptions = {}
@@ -34,12 +42,27 @@ class Register:
         self.event_bus.subscribe(CommandEvent, self.execute_command)
 
     def hook_perm_system(self, perm_system: PermSystem):
+        """
+        挂载权限系统
+        
+        Args:
+            perm_system: 权限系统实例
+        """
         self.perm_system = perm_system
         logger.debug("Permission system has been hooked with Register.")
 
     def register_event(
         self, event_name: str, listener_name: str, function: Callable, priority: int = 1
     ):
+        """
+        注册事件处理器
+        
+        Args:
+            event_name: 事件名称
+            listener_name: 监听器名称
+            function: 处理函数
+            priority: 优先级（默认为1）
+        """
         if (
             event_name in self._event_handlers
             and function in self._event_handlers[event_name]

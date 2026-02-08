@@ -65,7 +65,17 @@ def on_message(
     priority: int = 5,
     filters: Optional[Union[EventFilter, List[EventFilter]]] = None
 ):
-    """消息事件处理器注册（支持过滤条件）"""
+    """
+    消息事件处理器注册装饰器（支持过滤条件）
+    
+    Args:
+        name: 处理器名称，如果为None则使用函数名
+        priority: 优先级，数字越小优先级越高（默认为5）
+        filters: 过滤条件，可以是单个EventFilter或列表
+        
+    Returns:
+        装饰器函数
+    """
 
     def decorator(func):
         nonlocal name
@@ -95,7 +105,17 @@ def on_notice(
     priority: int = 5,
     filters: Optional[Union[EventFilter, List[EventFilter]]] = None
 ):
-    """通知事件处理器注册（支持过滤条件）"""
+    """
+    通知事件处理器注册装饰器（支持过滤条件）
+    
+    Args:
+        name: 处理器名称，如果为None则使用函数名
+        priority: 优先级，数字越小优先级越高（默认为5）
+        filters: 过滤条件，可以是单个EventFilter或列表
+        
+    Returns:
+        装饰器函数
+    """
 
     def decorator(func):
         nonlocal name
@@ -198,8 +218,7 @@ def on_load():
     使用示例:
         @on_load()
         async def plugin_load():
-            # 插件加载时执行的初始化代码
-            print("插件正在加载...")
+            print("插件正在加载...") # 插件加载时执行的初始化代码
     """
     def decorator(func):
         # 标记函数为加载钩子
@@ -215,8 +234,7 @@ def on_unload():
     使用示例:
         @on_unload()
         async def plugin_unload():
-            # 插件卸载时执行的清理代码
-            print("插件正在卸载...")
+            print("插件正在卸载...") # 插件卸载时执行的清理代码
     """
     def decorator(func):
         # 标记函数为卸载钩子

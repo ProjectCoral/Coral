@@ -1,8 +1,7 @@
 """
-Plugin Manager
-==============
+插件管理器
 
-Main plugin manager class that coordinates all plugin management functionality.
+主插件管理器类，协调所有插件管理功能。
 """
 
 import os
@@ -28,17 +27,17 @@ PLUGINMANAGER_META = 250606
 
 
 class PluginManager:
-    """Main plugin manager with dependency-aware concurrent loading."""
+    """主插件管理器，支持依赖感知的并发加载。"""
     
     def __init__(self, register, config, perm_system, plugin_dir="./plugins"):
         """
-        Initialize plugin manager.
+        初始化插件管理器。
         
         Args:
-            register: Register object
-            config: Configuration object
-            perm_system: Permission system object
-            plugin_dir: Plugin directory path
+            register: 注册器对象
+            config: 配置对象
+            perm_system: 权限系统对象
+            plugin_dir: 插件目录路径
         """
         self.config = config
         self.perm_system = perm_system
@@ -66,10 +65,10 @@ class PluginManager:
     
     async def load_all_plugins(self) -> Tuple[bool, str]:
         """
-        Load all enabled plugins with dependency-aware concurrent loading.
+        加载所有启用的插件，支持依赖感知的并发加载。
         
         Returns:
-            Tuple of (success, message)
+            Tuple (success, message) 
         """
         if self._is_loading:
             return False, "Plugin loading already in progress"
@@ -172,13 +171,13 @@ class PluginManager:
     
     async def load_plugin(self, plugin_name: str) -> Tuple[bool, str]:
         """
-        Load a single plugin.
+        加载单个插件。
         
         Args:
-            plugin_name: Name of plugin to load
+            plugin_name: 要加载的插件名称
             
         Returns:
-            Tuple of (success, message)
+            Tuple (success, message)
         """
         try:
             # Check if plugin exists
@@ -231,13 +230,13 @@ class PluginManager:
     
     async def unload_plugin(self, plugin_name: str) -> Tuple[bool, str]:
         """
-        Unload a plugin.
+        卸载单个插件。
         
         Args:
-            plugin_name: Name of plugin to unload
+            plugin_name: 要卸载的插件名称
             
         Returns:
-            Tuple of (success, message)
+            Tuple (success, message)
         """
         if not self.registry.is_loaded(plugin_name):
             return False, f"Plugin {plugin_name} is not loaded"
@@ -266,13 +265,13 @@ class PluginManager:
     
     async def enable_plugin(self, plugin_name: str) -> Tuple[bool, str]:
         """
-        Enable a disabled plugin.
+        启用单个插件。
         
         Args:
-            plugin_name: Name of plugin to enable
+            plugin_name: 要启用的插件名称
             
         Returns:
-            Tuple of (success, message)
+            Tuple (success, message)
         """
         try:
             # Check if plugin exists (disabled version)
@@ -303,13 +302,13 @@ class PluginManager:
     
     async def disable_plugin(self, plugin_name: str) -> Tuple[bool, str]:
         """
-        Disable a plugin.
+        禁用单个插件。
         
         Args:
-            plugin_name: Name of plugin to disable
+            plugin_name: 要禁用的插件名称
             
         Returns:
-            Tuple of (success, message)
+            Tuple (success, message)
         """
         try:
             # Check if plugin exists
@@ -346,13 +345,13 @@ class PluginManager:
     
     async def reload_plugin(self, plugin_name: str) -> Tuple[bool, str]:
         """
-        Reload a single plugin.
+        重载单个插件。
         
         Args:
-            plugin_name: Name of plugin to reload
+            plugin_name: 要重载的插件名称
             
         Returns:
-            Tuple of (success, message)
+            Tuple (success, message)
         """
         # First unload if loaded
         if self.registry.is_loaded(plugin_name):
@@ -365,10 +364,10 @@ class PluginManager:
     
     async def unload_all_plugins(self) -> Tuple[bool, str]:
         """
-        Unload all loaded plugins (for framework shutdown).
+        卸载所有已加载的插件（用于框架关闭）。
         
         Returns:
-            Tuple of (success, message)
+            Tuple (success, message)
         """
         start_time = time.time()
         loaded_plugins = [entry.name for entry in self.registry.get_loaded_plugins()]
@@ -459,10 +458,10 @@ class PluginManager:
     
     async def reload_all_plugins(self) -> Tuple[bool, str]:
         """
-        Reload all plugins.
+        重载所有插件。
         
         Returns:
-            Tuple of (success, message)
+            Tuple (success, message)
         """
         # Unload all loaded plugins
         loaded_plugins = [entry.name for entry in self.registry.get_loaded_plugins()]
@@ -478,13 +477,13 @@ class PluginManager:
     
     async def list_plugins(self, filter_type: str = "all") -> str:
         """
-        List plugins with optional filter.
+        列出插件，根据过滤类型（所有、已加载、已启用、已禁用）。
         
         Args:
-            filter_type: Filter type (all, loaded, enabled, disabled)
+            filter_type: 过滤类型 (all, loaded, enabled, disabled)
             
         Returns:
-            Formatted plugin list
+            str 格式化的插件列表
         """
         filter_type = filter_type.lower()
         
@@ -528,13 +527,13 @@ class PluginManager:
     
     async def get_plugin_stats(self, plugin_name: str) -> str:
         """
-        Get statistics for a specific plugin.
+        获取单个插件的统计信息。
         
         Args:
-            plugin_name: Name of plugin
+            plugin_name: 插件名称
             
         Returns:
-            Formatted statistics
+            格式化的统计信息
         """
         plugin_info = self.registry.get_plugin_info(plugin_name)
         if not plugin_info:
@@ -578,10 +577,10 @@ class PluginManager:
     
     async def get_overall_stats(self) -> str:
         """
-        Get overall plugin statistics.
+        获取所有插件的整体统计信息。
         
         Returns:
-            Formatted statistics
+            str 格式化的整体统计信息
         """
         counts = self.registry.get_plugin_count()
         loaded_plugins = self.registry.get_loaded_plugins()
@@ -625,13 +624,13 @@ class PluginManager:
     
     async def get_plugin_info(self, plugin_name: str) -> str:
         """
-        Get detailed information about a plugin.
+        获取单个插件的详细信息。
         
         Args:
-            plugin_name: Name of plugin
+            plugin_name: 插件名称
             
         Returns:
-            Formatted plugin information
+            str 插件详细信息
         """
         plugin_info = self.registry.get_plugin_info(plugin_name)
         if not plugin_info:
