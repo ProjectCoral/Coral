@@ -212,9 +212,9 @@ class PluginManager:
                 self.registry.register_plugin(plugin_name, meta)
             
             # Load the plugin
-            loaded_plugins = set(self.registry.get_loaded_plugins())
+            loaded_plugin_names = {entry.name for entry in self.registry.get_loaded_plugins()}
             success, error, load_time = await self.loader.load_plugin_with_deps(
-                plugin_name, plugin_path, meta, loaded_plugins
+                plugin_name, plugin_path, meta, loaded_plugin_names
             )
             
             if success:
@@ -287,14 +287,28 @@ class PluginManager:
             # Rename directory to enable plugin
             os.rename(disabled_path, enabled_path)
             
-            # Update registry
-            self.registry.mark_as_enabled(plugin_name)
-            
-            # Clear metadata cache for this plugin
-            self.metadata.clear_cache()
-            
-            logger.info(f"Enabled plugin {plugin_name}")
-            return True, f"Plugin {plugin_name} enabled successfully"
+            try:
+                # Try to load the plugin after enabling
+                success, load_message = await self.load_plugin(plugin_name)
+                if not success:
+                    # Load failed, rollback rename
+                    os.rename(enabled_path, disabled_path)
+                    return False, f"Plugin {plugin_name} enabled but failed to load: {load_message}"
+                
+                # Update registry
+                self.registry.mark_as_enabled(plugin_name)
+                
+                # Clear metadata cache for this plugin
+                self.metadata.clear_cache()
+                
+                logger.info(f"Enabled plugin {plugin_name}")
+                return True, f"Plugin {plugin_name} enabled and loaded successfully"
+                
+            except Exception as load_error:
+                # Load failed with exception, rollback rename
+                os.rename(enabled_path, disabled_path)
+                logger.exception(f"Error loading plugin {plugin_name} after enabling: {load_error}")
+                return False, f"Plugin {plugin_name} enabled but failed to load: {str(load_error)}"
             
         except Exception as e:
             logger.exception(f"Error enabling plugin {plugin_name}: {e}")
@@ -327,17 +341,31 @@ class PluginManager:
                 if not success:
                     return False, f"Failed to unload plugin before disabling: {message}"
             
-            # Rename directory to disable plugin
-            os.rename(plugin_path, disabled_path)
-            
-            # Update registry
-            self.registry.mark_as_disabled(plugin_name)
-            
-            # Clear metadata cache for this plugin
-            self.metadata.clear_cache()
-            
-            logger.info(f"Disabled plugin {plugin_name}")
-            return True, f"Plugin {plugin_name} disabled successfully"
+            try:
+                # Rename directory to disable plugin
+                os.rename(plugin_path, disabled_path)
+                
+                # Update registry
+                self.registry.mark_as_disabled(plugin_name)
+                
+                # Clear metadata cache for this plugin
+                self.metadata.clear_cache()
+                
+                logger.info(f"Disabled plugin {plugin_name}")
+                return True, f"Plugin {plugin_name} disabled successfully"
+                
+            except Exception as rename_error:
+                # Rename failed, but plugin is already unloaded
+                # Try to reload the plugin to restore consistency
+                if self.registry.is_loaded(plugin_name):
+                    # Plugin was marked as loaded but rename failed
+                    # This is an inconsistent state, try to reload
+                    reload_success, reload_msg = await self.load_plugin(plugin_name)
+                    if not reload_success:
+                        logger.error(f"Failed to restore plugin {plugin_name} after rename failure: {reload_msg}")
+                
+                logger.exception(f"Error renaming plugin directory for {plugin_name}: {rename_error}")
+                return False, f"Failed to disable plugin {plugin_name}: {str(rename_error)}"
             
         except Exception as e:
             logger.exception(f"Error disabling plugin {plugin_name}: {e}")
