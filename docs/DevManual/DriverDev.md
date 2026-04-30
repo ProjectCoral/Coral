@@ -5,7 +5,7 @@
 ## 1. 继承基类
 
 ```python
-from core.driver import BaseDriver
+from Coral.driver import BaseDriver
 
 PROTOCOL = "my_platform"  # 必须与适配器协议一致
 

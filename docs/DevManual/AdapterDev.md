@@ -5,7 +5,7 @@
 ## 1. 继承基类
 
 ```python
-from core.adapter import BaseAdapter
+from Coral.adapter import BaseAdapter
 
 PROTOCOL = "my_platform"  # 必须定义的协议标识
 

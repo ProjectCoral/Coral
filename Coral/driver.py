@@ -4,27 +4,41 @@ import importlib
 import asyncio
 import weakref
 import gc
+import uuid
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Set, List
+from typing import Any, Callable, Dict, Optional, Set, List
 from contextlib import asynccontextmanager
-from .adapter import BaseAdapter
+from .bridge import MessageBridge
 
 logger = logging.getLogger(__name__)
 
 
 class BaseDriver(ABC):
     """驱动器基类 - 处理与平台的实际通信"""
+
     PROTOCOL = "unknown"  # 默认协议
 
-    def __init__(self, adapter: BaseAdapter, config: Dict[str, Any]):
+    def __init__(
+        self,
+        bridge: MessageBridge,
+        config: Dict[str, Any],
+        driver_id: Optional[str] = None,
+    ):
         self.config = config
-        self.adapter = adapter
+        self.bridge = bridge
+        self._driver_id = driver_id or str(uuid.uuid4())[:8]
         self._running = False
         self._tasks: Set[asyncio.Task] = set()
-        self._cleanup_callbacks: List[callable] = []
-        self.adapter.add_driver(self)
-        self.self_id = config.get("self_id", "unknown")  # 从配置中获取self_id
-        logger.debug(f"Driver initialized with self_id: {self.self_id}")
+        self._cleanup_callbacks: List[Callable] = []
+        self._sender: Callable = None
+        # 注册发送回调到 bridge
+        self.bridge.register_driver_sender(self._driver_id, self._do_send)
+        # 注册 Bot 工厂
+        self.bridge.register_bot_factory(self._create_bot)
+        self.self_id = config.get("self_id", "unknown")
+        logger.debug(
+            f"Driver initialized with self_id: {self.self_id}, driver_id: {self._driver_id}"
+        )
 
     @abstractmethod
     async def start(self):
@@ -43,26 +57,43 @@ class BaseDriver(ABC):
 
     async def handle_receive(self, raw_data: Dict[str, Any]):
         """处理接收到的原始数据"""
-        if self.adapter:
-            await self.adapter.handle_incoming(raw_data)
-        else:
-            logger.warning("No adapter set, cannot handle incoming data")
+        await self.bridge.receive_from_platform(raw_data)
 
     def on_connect(self):
         """当驱动器连接时调用"""
         logger.info(f"Driver connected with self_id: {self.self_id}")
-        if self.adapter:
-            # 通知适配器创建Bot对象
-            self.adapter.create_bot_for_driver(self)
+        # 通过 bridge 创建 Bot
+        if hasattr(self.bridge, "create_bot"):
+            self.bridge.create_bot(self.self_id, self.config)
 
     def on_disconnect(self):
         """当驱动器断开连接时调用"""
         logger.info(f"Driver disconnected with self_id: {self.self_id}")
-        if self.adapter:
-            # 通知适配器移除Bot对象
-            self.adapter.remove_bot_for_driver(self)
+        # 通过 bridge 移除 Bot
+        if hasattr(self.bridge, "remove_bot"):
+            self.bridge.remove_bot(self.self_id)
 
-    def add_cleanup_callback(self, callback: callable):
+    def register_sender(self, sender: Callable):
+        """注册发送回调（供外部调用）"""
+        self._sender = sender
+
+    async def _do_send(self, data: bytes) -> None:
+        """通过 socket 发送数据"""
+        await self.send_action_raw(data)
+
+    async def send_action_raw(self, data: bytes) -> None:
+        """发送原始字节数据（由 bridge 调用）"""
+        raise NotImplementedError
+
+    def _create_bot(self, self_id: str, config: Dict[str, Any]):
+        """Bot 工厂函数（由 bridge 调用）"""
+        from .protocol import Bot
+
+        return Bot(
+            platform=self.PROTOCOL, self_id=self_id, event_bus=None, config=config
+        )
+
+    def add_cleanup_callback(self, callback: Callable):
         """添加清理回调函数"""
         self._cleanup_callbacks.append(callback)
 
@@ -76,7 +107,7 @@ class BaseDriver(ABC):
                     await task
                 except asyncio.CancelledError:
                     pass
-        
+
         # 执行清理回调
         for callback in self._cleanup_callbacks:
             try:
@@ -86,11 +117,11 @@ class BaseDriver(ABC):
                     callback()
             except Exception as e:
                 logger.error(f"Cleanup callback error: {e}")
-        
+
         # 清空集合和列表
         self._tasks.clear()
         self._cleanup_callbacks.clear()
-        
+
         # 强制垃圾回收
         gc.collect()
 
@@ -148,7 +179,7 @@ class DriverManager:
                 logger.info(f"Starting driver: {driver_name}")
             except Exception as e:
                 logger.error(f"Failed to start driver {driver_name}: {e}")
-        
+
         # 等待所有驱动器启动完成
         if tasks:
             try:
@@ -169,31 +200,35 @@ class DriverManager:
         stop_tasks = []
         for driver_name, driver in self.drivers.items():
             try:
-                stop_task = asyncio.create_task(driver.stop(), name=f"stop_{driver_name}")
+                stop_task = asyncio.create_task(
+                    driver.stop(), name=f"stop_{driver_name}"
+                )
                 stop_tasks.append(stop_task)
                 logger.debug(f"Stopping driver: {driver_name}")
             except Exception as e:
                 logger.error(f"Failed to stop driver {driver_name}: {e}")
-        
+
         # 等待所有驱动器停止
         if stop_tasks:
             try:
                 await asyncio.gather(*stop_tasks, return_exceptions=True)
             except Exception as e:
                 logger.error(f"Error during driver shutdown: {e}")
-        
+
         # 清理所有驱动器
         cleanup_tasks = []
         for driver_name, driver in self.drivers.items():
             try:
-                cleanup_task = asyncio.create_task(driver._cleanup(), name=f"cleanup_{driver_name}")
+                cleanup_task = asyncio.create_task(
+                    driver._cleanup(), name=f"cleanup_{driver_name}"
+                )
                 cleanup_tasks.append(cleanup_task)
             except Exception as e:
                 logger.error(f"Failed to cleanup driver {driver_name}: {e}")
-        
+
         if cleanup_tasks:
             await asyncio.gather(*cleanup_tasks, return_exceptions=True)
-        
+
         self._running = False
         logger.info("All drivers stopped and cleaned up")
 
@@ -211,7 +246,7 @@ class DriverManager:
         driver_modules = [
             f.split(".")[0] for f in os.listdir(driver_path) if f.endswith("_driver.py")
         ]
-        
+
         if not driver_modules:
             logger.debug("No driver modules found")
             return
@@ -222,53 +257,57 @@ class DriverManager:
             try:
                 driver_name = module.split("_driver")[0]
                 logger.debug(f"Loading driver: {driver_name}")
-                
+
                 driver_obj = importlib.import_module(
                     f"libraries.drivers.{driver_name}_driver"
                 )
                 driver_class = getattr(driver_obj, f"{driver_name.capitalize()}Driver")
-                
+
                 if not issubclass(driver_class, BaseDriver):
                     logger.warning(
                         f"Found driver {driver_name} but it is not a subclass of BaseDriver, skipping..."
                     )
                     continue
-                
+
                 driver_config = self.config.get(driver_name + "_driver", {})
                 driver_protocol = getattr(driver_class, "PROTOCOL", None)
-                
+
                 if not driver_protocol:
                     logger.warning(
                         f"Driver {driver_name} did not specify a protocol, skipping..."
                     )
                     continue
-                
+
                 pend_adapter = self.adapter_manager.get_adapter(driver_protocol)
                 if not pend_adapter:
                     logger.warning(
                         f"Driver {driver_name} requires adapter {driver_protocol}, but it is not registered, skipping..."
                     )
                     continue
-                
-                # 创建驱动器实例
-                driver_instance = driver_class(pend_adapter, driver_config)
+
+                # 创建驱动器实例（传递 bridge 即 adapter）
+                driver_instance = driver_class(pend_adapter, driver_config, driver_name)
                 self.register_driver(driver_instance, driver_name)
                 loaded_count += 1
-                
-                logger.info(f"Successfully loaded driver: {driver_name} (protocol: {driver_protocol})")
-                
+
+                logger.info(
+                    f"Successfully loaded driver: {driver_name} (protocol: {driver_protocol})"
+                )
+
             except ImportError as e:
                 logger.error(f"Failed to import driver module {driver_name}: {e}")
             except AttributeError as e:
                 logger.error(f"Driver class not found in module {driver_name}: {e}")
             except Exception as e:
                 logger.exception(f"Failed to load driver {driver_name}: {e}")
-        
+
         logger.info(f"Loaded {loaded_count}/{len(driver_modules)} drivers.")
-        
+
         # 报告加载统计
         if loaded_count < len(driver_modules):
-            logger.warning(f"Failed to load {len(driver_modules) - loaded_count} drivers")
+            logger.warning(
+                f"Failed to load {len(driver_modules) - loaded_count} drivers"
+            )
 
     async def unload_driver(self, driver_name: str) -> bool:
         """卸载指定驱动器"""
@@ -276,23 +315,23 @@ class DriverManager:
         if not driver:
             logger.warning(f"Driver {driver_name} not found")
             return False
-        
+
         try:
             # 停止驱动器
             if self._running:
                 await driver.stop()
-            
+
             # 清理资源
             await driver._cleanup()
-            
+
             # 从管理器中移除
             del self.drivers[driver_name]
             if driver_name in self._driver_refs:
                 del self._driver_refs[driver_name]
-            
+
             logger.debug(f"Successfully unloaded driver: {driver_name}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to unload driver {driver_name}: {e}")
             return False
@@ -303,9 +342,9 @@ class DriverManager:
             "total_drivers": len(self.drivers),
             "running": self._running,
             "driver_names": list(self.drivers.keys()),
-            "weak_ref_count": len(self._driver_refs)
+            "weak_ref_count": len(self._driver_refs),
         }
-        
+
         # 收集每个驱动器的详细信息
         driver_details = {}
         for name, driver in self.drivers.items():
@@ -314,9 +353,9 @@ class DriverManager:
                 "protocol": getattr(driver, "PROTOCOL", "unknown"),
                 "running": driver._running,
                 "active_tasks": len(driver._tasks),
-                "cleanup_callbacks": len(driver._cleanup_callbacks)
+                "cleanup_callbacks": len(driver._cleanup_callbacks),
             }
-        
+
         stats["driver_details"] = driver_details
         return stats
 

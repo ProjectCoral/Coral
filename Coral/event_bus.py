@@ -11,7 +11,7 @@ from .protocol import (
     CommandEvent,
     MessageChain,
     MessageSegment,
-    Event
+    Event,
 )
 
 logger = logging.getLogger(__name__)
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EventBusMetrics:
     """事件总线性能指标"""
+
     total_events_processed: int = 0
     total_results_processed: int = 0
     avg_event_processing_time: float = 0.0
@@ -77,7 +78,7 @@ class EventBus:
         """发布事件（带中间件处理）"""
         start_time = time.time()
         self._metrics.total_events_processed += 1
-        
+
         # 执行中间件链
         for middleware in self._middlewares:
             try:
@@ -92,9 +93,11 @@ class EventBus:
         # 执行事件处理器
         results = []
         event_type = type(event)
-        
+
         if event_type in self._subscribers:
-            logger.debug(f"Found {len(self._subscribers[event_type])} subscribers for {event_type.__name__}")
+            logger.debug(
+                f"Found {len(self._subscribers[event_type])} subscribers for {event_type.__name__}"
+            )
             for handler, _ in self._subscribers[event_type]:
                 try:
                     result = await handler(event)
@@ -117,18 +120,20 @@ class EventBus:
         # 更新性能指标
         processing_time = time.time() - start_time
         self._metrics.avg_event_processing_time = (
-            self._metrics.avg_event_processing_time * 
-            (self._metrics.total_events_processed - 1) + 
-            processing_time
+            self._metrics.avg_event_processing_time
+            * (self._metrics.total_events_processed - 1)
+            + processing_time
         ) / self._metrics.total_events_processed
 
     async def _enqueue_result(self, event: Event, result: Any):
         """将结果加入队列"""
         logger.debug(f"Enqueuing result: {type(result).__name__}")
-        
+
         if isinstance(result, list):
             for r in result:
-                processed_result = self.convert_to_protocol(event, r) if isinstance(r, str) else r
+                processed_result = (
+                    self.convert_to_protocol(event, r) if isinstance(r, str) else r
+                )
                 if processed_result is not None:
                     logger.debug(f"Adding to queue: {type(processed_result).__name__}")
                     await self._result_queue.put(processed_result)
@@ -141,7 +146,7 @@ class EventBus:
             if processed_result is not None:
                 logger.debug(f"Adding to queue: {type(processed_result).__name__}")
                 await self._result_queue.put(processed_result)
-        
+
         # 更新队列指标
         current_size = self._result_queue.qsize()
         self._metrics.current_queue_size = current_size
@@ -174,7 +179,7 @@ class EventBus:
     async def _process_results(self):
         """异步处理缓冲区中的结果"""
         logger.debug("Start processing results in buffer.")
-        
+
         while self._running:
             try:
                 # 使用批处理提高性能
@@ -183,26 +188,29 @@ class EventBus:
                     try:
                         # 使用带超时的get，避免忙等待
                         result = await asyncio.wait_for(
-                            self._result_queue.get(), 
-                            timeout=0.1
+                            self._result_queue.get(), timeout=0.1
                         )
                         if result is not None:
                             batch.append(result)
-                            logger.debug(f"Got result from queue: {type(result).__name__}")
+                            logger.debug(
+                                f"Got result from queue: {type(result).__name__}"
+                            )
                     except asyncio.TimeoutError:
                         break  # 队列为空，处理当前批次
-                
+
                 if not batch:
                     # 队列为空，短暂休眠避免CPU占用
                     await asyncio.sleep(0.01)
                     continue
-                
+
                 # 批量处理结果
                 start_time = time.time()
                 for result in batch:
                     result_type = type(result)
-                    logger.debug(f"Processing result from queue: {result_type.__name__}")
-                    
+                    logger.debug(
+                        f"Processing result from queue: {result_type.__name__}"
+                    )
+
                     if result_type in self._subscribers:
                         logger.debug(f"Found subscribers for {result_type.__name__}")
                         try:
@@ -211,20 +219,24 @@ class EventBus:
                             logger.error(f"Result handler error: {e}")
                             self._metrics.total_errors += 1
                     else:
-                        logger.debug(f"No subscribers for result type: {result_type.__name__}")
-                        logger.debug(f"Available subscriber types: {[k.__name__ for k in self._subscribers.keys()]}")
-                    
+                        logger.debug(
+                            f"No subscribers for result type: {result_type.__name__}"
+                        )
+                        logger.debug(
+                            f"Available subscriber types: {[k.__name__ for k in self._subscribers.keys()]}"
+                        )
+
                     self._result_queue.task_done()
-                
+
                 # 更新性能指标
                 processing_time = time.time() - start_time
                 self._metrics.total_results_processed += len(batch)
                 self._metrics.avg_result_processing_time = (
-                    self._metrics.avg_result_processing_time * 
-                    (self._metrics.total_results_processed - len(batch)) + 
-                    processing_time
+                    self._metrics.avg_result_processing_time
+                    * (self._metrics.total_results_processed - len(batch))
+                    + processing_time
                 ) / self._metrics.total_results_processed
-                
+
             except asyncio.CancelledError:
                 logger.debug("Result processing cancelled")
                 break
@@ -232,12 +244,17 @@ class EventBus:
                 logger.error(f"Result processing error: {e}", exc_info=True)
                 self._metrics.total_errors += 1
                 await asyncio.sleep(0.1)  # 错误后短暂休眠
-        
+
         logger.debug("Result processing stopped.")
 
     def get_metrics(self) -> EventBusMetrics:
         """获取性能指标"""
         return self._metrics
+
+    def clear_subscribers(self, event_type: type):
+        """清除指定事件类型的所有订阅者"""
+        if event_type in self._subscribers:
+            self._subscribers[event_type].clear()
 
     def get_queue_size(self) -> int:
         """获取当前队列大小"""

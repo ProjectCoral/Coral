@@ -3,6 +3,7 @@
 提供丰富的事件过滤条件，简化插件开发
 支持多种事件类型：MessageEvent, CommandEvent, NoticeEvent, GenericEvent
 """
+
 from typing import Union, List, Callable, Any, Optional
 
 from .base import EventFilter, MessageFilter, CompositeFilter
@@ -23,14 +24,15 @@ from .message_filters import (
     AtMeFilter,
     HasAtFilter,
     CustomFilter,
-    AndFilter,
-    OrFilter,
-    NotFilter,
 )
+from ..permission import PermissionType
 
 # ==================== 工厂函数 ====================
 
-def contains(keywords: Union[str, List[str]], case_sensitive: bool = False) -> MessageFilter:
+
+def contains(
+    keywords: Union[str, List[str]], case_sensitive: bool = False
+) -> MessageFilter:
     """包含关键词"""
     return ContainsFilter(keywords, case_sensitive)
 
@@ -75,12 +77,23 @@ def is_group() -> MessageFilter:
     return GroupOnlyFilter()
 
 
-def has_permission(permission: Union[str, List[str]]) -> MessageFilter:
+def _get_perm_system():
+    """Get PermSystem from container."""
+    from ..core.core import _container
+    from ..permission import PermSystem
+
+    return _container.resolve(PermSystem)
+
+
+def has_permission(permission: PermissionType) -> MessageFilter:
     """具有指定权限"""
-    return PermissionFilter(permission)
+    perm_system = _get_perm_system()
+    return PermissionFilter(permission, perm_system)
 
 
-def rate_limit(requests: int, period: int = 60, key_func: Optional[Callable[[Any], str]] = None) -> MessageFilter:
+def rate_limit(
+    requests: int, period: int = 60, key_func: Optional[Callable[[Any], str]] = None
+) -> MessageFilter:
     """速率限制"""
     return RateLimitFilter(requests, period, key_func)
 
@@ -95,19 +108,19 @@ def custom(func: Callable[[Any], Union[bool, Any]]) -> MessageFilter:
     return CustomFilter(func)
 
 
-def and_(*filters: MessageFilter) -> MessageFilter:
+def and_(*filters: EventFilter) -> CompositeFilter:
     """逻辑与组合"""
-    return AndFilter(*filters)
+    return CompositeFilter(EventFilter.Operator.AND, *filters)
 
 
-def or_(*filters: MessageFilter) -> MessageFilter:
+def or_(*filters: EventFilter) -> CompositeFilter:
     """逻辑或组合"""
-    return OrFilter(*filters)
+    return CompositeFilter(EventFilter.Operator.OR, *filters)
 
 
-def not_(filter: MessageFilter) -> MessageFilter:
+def not_(filter: EventFilter) -> CompositeFilter:
     """逻辑非"""
-    return NotFilter(filter)
+    return CompositeFilter(EventFilter.Operator.NOT, filter)
 
 
 def to_someone(user_ids: Union[int, str, List[Union[int, str]]]) -> MessageFilter:
@@ -128,49 +141,44 @@ def has_at() -> MessageFilter:
 # 导出所有过滤器类
 __all__ = [
     # 基类
-    'EventFilter',
-    'MessageFilter',
-    'CompositeFilter',
-    
+    "EventFilter",
+    "MessageFilter",
+    "CompositeFilter",
     # 消息过滤器类
-    'ContainsFilter',
-    'StartsWithFilter',
-    'EndsWithFilter',
-    'RegexFilter',
-    'EqualFilter',
-    'UserFilter',
-    'GroupFilter',
-    'PrivateFilter',
-    'GroupOnlyFilter',
-    'PermissionFilter',
-    'RateLimitFilter',
-    'MessageTypeFilter',
-    'AtSomeoneFilter',
-    'AtMeFilter',
-    'HasAtFilter',
-    'CustomFilter',
-    'AndFilter',
-    'OrFilter',
-    'NotFilter', 
-    
+    "ContainsFilter",
+    "StartsWithFilter",
+    "EndsWithFilter",
+    "RegexFilter",
+    "EqualFilter",
+    "UserFilter",
+    "GroupFilter",
+    "PrivateFilter",
+    "GroupOnlyFilter",
+    "PermissionFilter",
+    "RateLimitFilter",
+    "MessageTypeFilter",
+    "AtSomeoneFilter",
+    "AtMeFilter",
+    "HasAtFilter",
+    "CustomFilter",
     # 工厂函数
-    'contains',
-    'starts_with',
-    'ends_with',
-    'regex',
-    'equal',
-    'from_user',
-    'in_group',
-    'is_private',
-    'is_group',
-    'has_permission',
-    'rate_limit',
-    'message_type',
-    'custom',
-    'and_',
-    'or_',
-    'not_',
-    'to_someone',
-    'to_me',
-    'has_at',
+    "contains",
+    "starts_with",
+    "ends_with",
+    "regex",
+    "equal",
+    "from_user",
+    "in_group",
+    "is_private",
+    "is_group",
+    "has_permission",
+    "rate_limit",
+    "message_type",
+    "custom",
+    "and_",
+    "or_",
+    "not_",
+    "to_someone",
+    "to_me",
+    "has_at",
 ]

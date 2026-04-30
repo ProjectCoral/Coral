@@ -2,22 +2,26 @@ import logging
 from typing import Optional, List
 from Coral import register, perm_system, event_bus
 from Coral.protocol import MessageEvent, CommandEvent, MessageRequest, MessageChain, MessageSegment
+from Coral.permission import Permission
 
 logger = logging.getLogger(__name__)
+
+ROOT_PERMISSION = Permission("chat_command", "", "Base permission for chat command execution")
+EXECUTE_PERMISSION = Permission("chat_command", "execute", "Allows the user to execute commands in chat")
 
 def register_plugin() -> None:
     """
     Register the chat command plugin with the Coral system.
-    
+
     This plugin handles command execution from chat messages starting with '!'.
     """
     chat_command_instance = ChatCommand(register, perm_system)
     event_bus.subscribe(MessageEvent, chat_command_instance.chat_command, 1)
-    
+
     # Register permissions for chat command execution
-    perm_system.register_perm("chat_command", "Base Permission")
-    perm_system.register_perm("chat_command.execute", "Allows the user to execute commands in chat")
-    
+    perm_system.register_perm(ROOT_PERMISSION)
+    perm_system.register_perm(EXECUTE_PERMISSION)
+
     logger.debug("Chat command plugin registered")
 
 class ChatCommand:
@@ -84,8 +88,10 @@ class ChatCommand:
         logger.info(f"Received command from user {sender_user_id}: {raw_message}")
         
         # Check permissions
-        if not self.perm_system.check_perm(["chat_command", "chat_command.execute"], 
-                                          sender_user_id, group_id):
+        if not self.perm_system.check_perm(
+            ROOT_PERMISSION | EXECUTE_PERMISSION,
+            sender_user_id, group_id
+        ):
             logger.warning(f"User {sender_user_id} lacks permission to execute commands")
             return None
         

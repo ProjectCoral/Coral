@@ -29,7 +29,7 @@ class CoralLoader:
     def __init__(self):
         textrender = Figlet(font="slant")
         print(Fore.YELLOW + textrender.renderText("Project Coral") + Fore.RESET)
-        built_time = datetime.fromtimestamp(os.path.getmtime('./Coral/core.py')).strftime("%Y-%m-%d %H:%M:%S")
+        built_time = datetime.fromtimestamp(os.path.getmtime('./Coral/core/__init__.py')).strftime("%Y-%m-%d %H:%M:%S")
         logger.info(f"Core version: [yellow]{CORAL_VERSION}[/], built on {built_time}")
         if CORAL_VERSION.endswith("early_development"):
             logger.warning("You are running an early development version of Coral. "
@@ -47,7 +47,8 @@ class CoralLoader:
         await self.event_bus.initialize()
         self.register.hook_perm_system(self.perm_system)
 
-        self.register.load_buildin_plugins = self.register_buildin_plugins
+        from Coral.core import core_reload
+        core_reload.load_buildin_plugins = self.register_buildin_plugins
 
         self.config.set("coral_version", CORAL_VERSION)
 
@@ -85,8 +86,6 @@ class CoralLoader:
 
     def register_buildin_plugins(self):
         """Register built-in system functions."""
-        # Note: base_commands functionality is now integrated into core.py
-        # as CoreCommands class, so we don't need to register it here
         
         # Register install_requirements functionality
         utils.install_requirements.register_plugin()

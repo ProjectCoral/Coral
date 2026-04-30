@@ -3,21 +3,35 @@ import logging
 import importlib
 import asyncio
 import time
+import json
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, List, Union, Set
+from typing import Any, Dict, Optional, List, Union, Set, Callable
 from contextlib import asynccontextmanager
-from .protocol import MessageEvent, ActionRequest, MessageRequest, NoticeEvent, BotResponse, Bot
+from .bridge import MessageBridge
+from .protocol import (
+    MessageEvent,
+    ActionRequest,
+    MessageRequest,
+    NoticeEvent,
+    BotResponse,
+    Bot,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class BaseAdapter(ABC):
-    """适配器基类 - 处理平台消息的转换和路由"""
+class BaseAdapter(MessageBridge):
+    """适配器基类 - 处理平台消息的转换和路由
+
+    实现了 MessageBridge 接口，接收来自 Driver 的数据，向 Driver 发送数据。
+    """
+
     PROTOCOL = "unknown"  # 默认协议
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.drivers: List[Any] = []
+        self._driver_senders: Dict[str, Callable] = {}  # driver_id -> 发送回调
+        self._bot_factory: Callable = None  # Bot 工厂函数
         self.event_bus = None
         self._handlers = {}
         self.bots: Dict[str, Bot] = {}  # 存储平台上的机器人实例
@@ -32,29 +46,102 @@ class BaseAdapter(ABC):
             "timeout_requests": 0,
             "avg_response_time": 0.0,
             "last_error": None,
-            "last_error_time": None
+            "last_error_time": None,
         }
 
     def set_event_bus(self, event_bus):
         """设置事件总线"""
         self.event_bus = event_bus
 
+    def register_driver_sender(self, driver_id: str, sender: Callable) -> None:
+        """注册 Driver 的发送回调（MessageBridge 接口实现）"""
+        self._driver_senders[driver_id] = sender
+        logger.debug(f"Registered sender for driver {driver_id}")
+
+    def register_bot_factory(self, factory: Callable) -> None:
+        """注册 Bot 工厂函数（MessageBridge 接口实现）"""
+        self._bot_factory = factory
+        logger.debug(f"Registered bot factory: {factory}")
+
+    def create_bot(self, self_id: str, config: Dict[str, Any]):
+        """创建 Bot 实例（MessageBridge 接口实现）"""
+        bot = self.add_bot(self_id, config)
+        # 注册到全局注册表
+        if hasattr(self, "event_bus") and self.event_bus:
+            try:
+                if hasattr(self.event_bus, "_adapter_manager"):
+                    self.event_bus._adapter_manager.add_bot(bot)
+            except Exception as e:
+                logger.warning(f"Failed to register bot in global registry: {e}")
+        logger.info(f"Created bot {self_id} for connected driver")
+        return bot
+
+    def remove_bot(self, self_id: str) -> None:
+        """移除 Bot 实例（MessageBridge 接口实现）"""
+        if self_id in self.bots:
+            # 从全局注册表中移除
+            if hasattr(self, "event_bus") and self.event_bus:
+                try:
+                    if hasattr(self.event_bus, "_adapter_manager"):
+                        adapter_manager = self.event_bus._adapter_manager
+                        if self_id in adapter_manager.bots:
+                            del adapter_manager.bots[self_id]
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to unregister bot from global registry: {e}"
+                    )
+
+            # 从本地注册表中移除
+            del self.bots[self_id]
+            logger.info(f"Removed bot {self_id} for disconnected driver")
+        else:
+            logger.warning(f"Bot {self_id} not found for disconnected driver")
+
+    async def send_to_platform(self, data: bytes) -> None:
+        """发送数据到平台（MessageBridge 接口实现）"""
+        if not self._driver_senders:
+            logger.warning("No drivers available to send data")
+            return
+
+        send_tasks = []
+        for driver_id, sender in self._driver_senders.items():
+            try:
+                send_tasks.append(sender(data))
+            except Exception as e:
+                logger.error(f"Failed to send data to driver {driver_id}: {e}")
+
+        if send_tasks:
+            try:
+                await asyncio.gather(*send_tasks, return_exceptions=True)
+            except Exception as e:
+                logger.error(f"Error during send to drivers: {e}")
+
+    async def receive_from_platform(self, raw_data: Any) -> None:
+        """接收来自平台的原始数据（MessageBridge 接口实现）"""
+        await self.handle_incoming(raw_data)
+
+    # ===== 以下为原有接口，保持向后兼容 =====
+
     def add_driver(self, driver: Any):
-        """添加驱动器"""
-        self.drivers.append(driver)
+        """添加驱动器（已废弃，请使用 register_driver_sender）"""
+        # 兼容旧代码，提取 driver_id 和 sender
+        driver_id = getattr(driver, "_driver_id", id(driver))
+        sender = getattr(driver, "_do_send", None)
+        if sender:
+            self._driver_senders[driver_id] = sender
 
     def create_bot_for_driver(self, driver):
         """为连接的驱动器创建Bot对象"""
         # 使用驱动器的self_id创建Bot对象
-        self_id = getattr(driver, 'self_id', 'unknown')
+        self_id = getattr(driver, "self_id", "unknown")
         if self_id not in self.bots:
-            bot = self.add_bot(self_id, self.config, driver)
+            bot = self.add_bot(self_id, self.config)
             # 添加到全局注册表
-            if hasattr(self, 'event_bus') and self.event_bus:
+            if hasattr(self, "event_bus") and self.event_bus:
                 # 通过事件总线获取AdapterManager并注册Bot
                 try:
                     # 假设event_bus有一个指向AdapterManager的引用
-                    if hasattr(self.event_bus, '_adapter_manager'):
+                    if hasattr(self.event_bus, "_adapter_manager"):
                         self.event_bus._adapter_manager.add_bot(bot)
                 except Exception as e:
                     logger.warning(f"Failed to register bot in global registry: {e}")
@@ -64,31 +151,33 @@ class BaseAdapter(ABC):
 
     def remove_bot_for_driver(self, driver):
         """为断开连接的驱动器移除Bot对象"""
-        self_id = getattr(driver, 'self_id', 'unknown')
+        self_id = getattr(driver, "self_id", "unknown")
         if self_id in self.bots:
             # 从全局注册表中移除
-            if hasattr(self, 'event_bus') and self.event_bus:
+            if hasattr(self, "event_bus") and self.event_bus:
                 try:
-                    if hasattr(self.event_bus, '_adapter_manager'):
+                    if hasattr(self.event_bus, "_adapter_manager"):
                         adapter_manager = self.event_bus._adapter_manager
                         if self_id in adapter_manager.bots:
                             del adapter_manager.bots[self_id]
                 except Exception as e:
-                    logger.warning(f"Failed to unregister bot from global registry: {e}")
-            
+                    logger.warning(
+                        f"Failed to unregister bot from global registry: {e}"
+                    )
+
             # 从本地注册表中移除
             del self.bots[self_id]
             logger.info(f"Removed bot {self_id} for disconnected driver")
         else:
             logger.warning(f"Bot {self_id} not found for disconnected driver")
 
-    def add_bot(self, self_id: str, config: Dict[str, Any] = {}, driver: Any = None) -> Bot:
+    def add_bot(self, self_id: str, config: Dict[str, Any] = {}) -> Bot:
         """添加机器人实例"""
         bot = Bot(
             platform=self.PROTOCOL,
             self_id=self_id,
-            adapter=self,
-            config=config
+            event_bus=self.event_bus,
+            config=config,
         )
         self.bots[self_id] = bot
         logger.debug(f"Added bot {self_id} for platform {bot.platform}")
@@ -99,23 +188,10 @@ class BaseAdapter(ABC):
         return self.bots.get(self_id)
 
     async def send_to_driver(self, data: Dict[str, Any]):
-        """发送数据到所有驱动器"""
-        if not self.drivers:
-            logger.warning("No drivers available to send data")
-            return
-        
-        send_tasks = []
-        for driver in self.drivers:
-            try:
-                send_tasks.append(driver.send_action(data))
-            except Exception as e:
-                logger.error(f"Failed to send data to driver: {e}")
-        
-        if send_tasks:
-            try:
-                await asyncio.gather(*send_tasks, return_exceptions=True)
-            except Exception as e:
-                logger.error(f"Error during send to drivers: {e}")
+        """发送数据到所有驱动器（已废弃，请使用 send_to_platform）"""
+        # 转换为字节并发送
+        data_bytes = json.dumps(data).encode() if isinstance(data, dict) else data
+        await self.send_to_platform(data_bytes)
 
     @abstractmethod
     async def handle_incoming(self, raw_data: Dict[str, Any]):
@@ -128,12 +204,16 @@ class BaseAdapter(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def handle_outgoing_action(self, action: ActionRequest) -> Union[BotResponse, None]:
+    async def handle_outgoing_action(
+        self, action: ActionRequest
+    ) -> Union[BotResponse, None]:
         """处理发往平台的主动动作"""
         raise NotImplementedError
 
     @abstractmethod
-    async def handle_outgoing_message(self, message: MessageRequest) -> Union[BotResponse, None]:
+    async def handle_outgoing_message(
+        self, message: MessageRequest
+    ) -> Union[BotResponse, None]:
         """处理消息回复"""
         raise NotImplementedError
 
@@ -179,7 +259,10 @@ class BaseAdapter(ABC):
                 # 更新平均响应时间
                 if self._metrics["total_requests"] > 0:
                     old_avg = self._metrics["avg_response_time"]
-                    new_avg = old_avg + (response_time - old_avg) / self._metrics["total_requests"]
+                    new_avg = (
+                        old_avg
+                        + (response_time - old_avg) / self._metrics["total_requests"]
+                    )
                     self._metrics["avg_response_time"] = new_avg
 
     def get_metrics(self) -> Dict[str, Any]:
@@ -192,11 +275,11 @@ class BaseAdapter(ABC):
         for request_id, future in self._pending_requests.items():
             if not future.done():
                 future.cancel()
-        
+
         self._pending_requests.clear()
         self.bots.clear()
-        self.drivers.clear()
-        
+        self._driver_senders.clear()
+
         logger.debug(f"Adapter {self.PROTOCOL} cleaned up")
 
 
@@ -209,7 +292,7 @@ class AdapterManager:
         self.config = config
         self.bots: Dict[str, Bot] = {}  # 全局机器人实例映射
         self._load_tasks: Set[asyncio.Task] = set()
-        
+
         # 将AdapterManager引用添加到event_bus，以便适配器可以访问
         self.event_bus._adapter_manager = self
 
@@ -235,15 +318,15 @@ class AdapterManager:
     def get_adapter(self, adapter_name: str) -> Optional[BaseAdapter]:
         """获取适配器实例"""
         return self.adapters.get(adapter_name.lower())
-    
+
     def add_bot(self, bot: Bot):
         """添加全局机器人实例"""
-        self.bots[bot.self_id] = bot
+        self.bots[str(bot.self_id)] = bot
         logger.debug(f"Registered bot {bot.self_id} in global registry")
 
     def get_bot(self, self_id: str) -> Optional[Bot]:
         """根据self_id获取机器人实例"""
-        return self.bots.get(self_id)
+        return self.bots.get(str(self_id))
 
     def get_bots_by_platform(self, platform: str) -> List[Bot]:
         """根据平台获取所有机器人实例"""
@@ -254,7 +337,7 @@ class AdapterManager:
         """处理消息请求"""
         platform_name = message.platform.lower()
         logger.debug(f"AdapterManager handling message for platform: {platform_name}")
-        
+
         if platform_name in self.adapters:
             adapter = self.adapters[platform_name]
             logger.debug(f"Found adapter for {platform_name}, handling message...")
@@ -269,7 +352,9 @@ class AdapterManager:
                 logger.error(f"Message request timeout for platform: {platform_name}")
                 return None
             except Exception as e:
-                logger.error(f"Failed to handle message for platform {platform_name}: {e}")
+                logger.error(
+                    f"Failed to handle message for platform {platform_name}: {e}"
+                )
                 return None
         else:
             logger.warning(f"No adapter found for platform: {platform_name}")
@@ -280,12 +365,12 @@ class AdapterManager:
         """处理主动动作请求"""
         platform_name = action.platform.lower()
         logger.debug(f"AdapterManager handling action for platform: {platform_name}")
-        
+
         if platform_name in self.adapters:
             adapter = self.adapters[platform_name]
             logger.debug(f"Found adapter for {platform_name}, handling action...")
             try:
-                async with adapter.request_context(f"action_{action.action_id}"):
+                async with adapter.request_context(f"action_{action.event_id}"):
                     result = await adapter._execute_with_timeout(
                         adapter.handle_outgoing_action(action)
                     )
@@ -295,7 +380,9 @@ class AdapterManager:
                 logger.error(f"Action request timeout for platform: {platform_name}")
                 return None
             except Exception as e:
-                logger.error(f"Failed to handle action for platform {platform_name}: {e}")
+                logger.error(
+                    f"Failed to handle action for platform {platform_name}: {e}"
+                )
                 return None
         else:
             logger.warning(f"No adapter found for platform: {platform_name}")
@@ -314,7 +401,7 @@ class AdapterManager:
             for f in os.listdir(adapter_path)
             if f.endswith("_adapter.py")
         ]
-        
+
         if not adapter_modules:
             logger.debug("No adapter modules found")
             return
@@ -325,48 +412,52 @@ class AdapterManager:
             try:
                 adapter_name = module.split("_adapter")[0]
                 logger.debug(f"Loading adapter: {adapter_name}")
-                
+
                 adapter_obj = importlib.import_module(
                     f"libraries.adapters.{adapter_name}_adapter"
                 )
                 adapter_class = getattr(
                     adapter_obj, f"{adapter_name.capitalize()}Adapter"
                 )
-                
+
                 if not issubclass(adapter_class, BaseAdapter):
                     logger.warning(
                         f"Found adapter {adapter_name} but it is not a subclass of BaseAdapter, skipping..."
                     )
                     continue
-                
+
                 adapter_config = self.config.get(adapter_name + "_adapter", {})
                 adapter_protocol = getattr(adapter_class, "PROTOCOL", None)
-                
+
                 if not adapter_protocol:
                     logger.warning(
                         f"Adapter {adapter_name} did not specify a protocol, skipping..."
                     )
                     continue
-                
+
                 adapter_instance = adapter_class(adapter_config)
                 adapter_instance.set_event_bus(self.event_bus)
                 self.register_adapter(adapter_instance, str(adapter_protocol))
                 loaded_count += 1
-                
-                logger.info(f"Successfully loaded adapter: {adapter_name} (protocol: {adapter_protocol})")
-                
+
+                logger.info(
+                    f"Successfully loaded adapter: {adapter_name} (protocol: {adapter_protocol})"
+                )
+
             except ImportError as e:
                 logger.error(f"Failed to import adapter module {adapter_name}: {e}")
             except AttributeError as e:
                 logger.error(f"Adapter class not found in module {adapter_name}: {e}")
             except Exception as e:
                 logger.exception(f"Error loading adapter {adapter_name}: {e}")
-        
+
         logger.info(f"Loaded {loaded_count}/{len(adapter_modules)} adapters.")
-        
+
         # 报告加载统计
         if loaded_count < len(adapter_modules):
-            logger.warning(f"Failed to load {len(adapter_modules) - loaded_count} adapters")
+            logger.warning(
+                f"Failed to load {len(adapter_modules) - loaded_count} adapters"
+            )
 
     async def unload_adapter(self, adapter_protocol: str) -> bool:
         """卸载指定适配器"""
@@ -374,26 +465,26 @@ class AdapterManager:
         if not adapter:
             logger.warning(f"Adapter {adapter_protocol} not found")
             return False
-        
+
         try:
             # 清理适配器资源
             await adapter.cleanup()
-            
+
             # 从管理器中移除
             del self.adapters[adapter_protocol]
-            
+
             # 清理相关的机器人实例
             bots_to_remove = []
             for bot_id, bot in self.bots.items():
                 if bot.platform.lower() == adapter_protocol.lower():
                     bots_to_remove.append(bot_id)
-            
+
             for bot_id in bots_to_remove:
                 del self.bots[bot_id]
-            
+
             logger.debug(f"Successfully unloaded adapter: {adapter_protocol}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to unload adapter {adapter_protocol}: {e}")
             return False
@@ -404,9 +495,9 @@ class AdapterManager:
             "total_adapters": len(self.adapters),
             "adapter_names": list(self.adapters.keys()),
             "total_bots": len(self.bots),
-            "bots_by_platform": {}
+            "bots_by_platform": {},
         }
-        
+
         # 收集每个适配器的详细信息
         adapter_details = {}
         for name, adapter in self.adapters.items():
@@ -414,18 +505,18 @@ class AdapterManager:
                 "protocol": adapter.PROTOCOL,
                 "bot_count": len(adapter.bots),
                 "driver_count": len(adapter.drivers),
-                "metrics": adapter.get_metrics()
+                "metrics": adapter.get_metrics(),
             }
-        
+
         stats["adapter_details"] = adapter_details
-        
+
         # 按平台统计机器人
         for bot in self.bots.values():
             platform = bot.platform.lower()
             if platform not in stats["bots_by_platform"]:
                 stats["bots_by_platform"][platform] = 0
             stats["bots_by_platform"][platform] += 1
-        
+
         return stats
 
     async def cleanup_all(self):
@@ -433,16 +524,20 @@ class AdapterManager:
         cleanup_tasks = []
         for adapter_protocol, adapter in self.adapters.items():
             try:
-                cleanup_task = asyncio.create_task(adapter.cleanup(), name=f"cleanup_{adapter_protocol}")
+                cleanup_task = asyncio.create_task(
+                    adapter.cleanup(), name=f"cleanup_{adapter_protocol}"
+                )
                 cleanup_tasks.append(cleanup_task)
             except Exception as e:
-                logger.error(f"Failed to create cleanup task for adapter {adapter_protocol}: {e}")
-        
+                logger.error(
+                    f"Failed to create cleanup task for adapter {adapter_protocol}: {e}"
+                )
+
         if cleanup_tasks:
             await asyncio.gather(*cleanup_tasks, return_exceptions=True)
-        
+
         self.adapters.clear()
         self.bots.clear()
         self._load_tasks.clear()
-        
+
         logger.info("All adapters cleaned up")

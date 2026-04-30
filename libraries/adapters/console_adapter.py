@@ -52,10 +52,11 @@ class ConsoleAdapter(BaseAdapter):
         """处理消息回复到控制台"""
         # 将消息内容输出到控制台
         plain_text = message.message.to_plain_text()
-        await self.send_to_driver({
-            "type": "message",
-            "message": plain_text
-        })
+        # JSON 编码后通过 sender 发送
+        import json
+        data = json.dumps({"type": "message", "message": plain_text}).encode()
+        for sender in self._driver_senders.values():
+            await sender(data)
     
     async def handle_outgoing_action(self, action: ActionRequest):
         """处理主动动作 (控制台暂不需要)"""

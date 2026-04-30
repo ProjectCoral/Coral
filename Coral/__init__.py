@@ -2,10 +2,13 @@
 Coral Core对外接口模块
 将核心功能的对外接口集中在此模块中，方便外部调用
 """
+
+import sys
 from typing import Any, List, Union, Optional
 from .protocol import *
 from .filters import *
-from .core import (
+from .permission import Permission, PermissionSet, PermissionType, create_permission
+from .core.core import (
     config,
     event_bus,
     register,
@@ -13,8 +16,8 @@ from .core import (
     plugin_manager,
     driver_manager,
     adapter_manager,
-    CORAL_VERSION,
 )
+from .core import CORAL_VERSION, get_container
 
 __all__ = [
     "config",
@@ -25,6 +28,7 @@ __all__ = [
     "driver_manager",
     "adapter_manager",
     "CORAL_VERSION",
+    "get_container",
     # 外部接口
     "on_message",
     "on_notice",
@@ -56,23 +60,27 @@ __all__ = [
     "to_someone",
     "to_me",
     "has_at",
+    # 权限类型
+    "Permission",
+    "PermissionSet",
+    "PermissionType",
+    "create_permission",
 ]
 
 
-
 def on_message(
-    name: str | None = None, 
+    name: str | None = None,
     priority: int = 5,
-    filters: Optional[Union[EventFilter, List[EventFilter]]] = None
+    filters: Optional[Union[EventFilter, List[EventFilter]]] = None,
 ):
     """
     消息事件处理器注册装饰器（支持过滤条件）
-    
+
     Args:
         name: 处理器名称，如果为None则使用函数名
         priority: 优先级，数字越小优先级越高（默认为5）
         filters: 过滤条件，可以是单个EventFilter或列表
-        
+
     Returns:
         装饰器函数
     """
@@ -81,7 +89,7 @@ def on_message(
         nonlocal name
         if name is None:
             name = func.__name__
-        
+
         async def wrapper(event: MessageEvent):
             # 应用过滤条件
             if filters:
@@ -93,26 +101,35 @@ def on_message(
                         if not await filter.check_with_warning(event):
                             return None
             return await func(event)
-        
+
         event_bus.subscribe(MessageEvent, wrapper, priority)
+
+        # Register with plugin context if available
+        try:
+            ctx = getattr(sys.modules[func.__module__], "_plugin_context", None)
+            if ctx is not None:
+                ctx.register_event(MessageEvent, func, wrapper, priority)
+        except Exception:
+            pass  # Ignore if context registration fails
+
         return func
 
     return decorator
 
 
 def on_notice(
-    name: str | None = None, 
+    name: str | None = None,
     priority: int = 5,
-    filters: Optional[Union[EventFilter, List[EventFilter]]] = None
+    filters: Optional[Union[EventFilter, List[EventFilter]]] = None,
 ):
     """
     通知事件处理器注册装饰器（支持过滤条件）
-    
+
     Args:
         name: 处理器名称，如果为None则使用函数名
         priority: 优先级，数字越小优先级越高（默认为5）
         filters: 过滤条件，可以是单个EventFilter或列表
-        
+
     Returns:
         装饰器函数
     """
@@ -121,7 +138,7 @@ def on_notice(
         nonlocal name
         if name is None:
             name = func.__name__
-        
+
         async def wrapper(event: NoticeEvent):
             # 应用过滤条件
             if filters:
@@ -133,18 +150,27 @@ def on_notice(
                         if not await filter.check_with_warning(event):
                             return None
             return await func(event)
-        
+
         event_bus.subscribe(NoticeEvent, wrapper, priority)
+
+        # Register with plugin context if available
+        try:
+            ctx = getattr(sys.modules[func.__module__], "_plugin_context", None)
+            if ctx is not None:
+                ctx.register_event(NoticeEvent, func, wrapper, priority)
+        except Exception:
+            pass  # Ignore if context registration fails
+
         return func
 
     return decorator
 
 
 def on_event(
-    name: str | None = None, 
-    event_type: Any = MessageEvent, 
+    name: str | None = None,
+    event_type: Any = MessageEvent,
     priority: int = 5,
-    filters: Optional[Union[EventFilter, List[EventFilter]]] = None
+    filters: Optional[Union[EventFilter, List[EventFilter]]] = None,
 ):
     """事件处理器注册（支持过滤条件）"""
 
@@ -152,7 +178,7 @@ def on_event(
         nonlocal name
         if name is None:
             name = func.__name__
-        
+
         async def wrapper(event):
             # 应用过滤条件
             if filters:
@@ -164,18 +190,27 @@ def on_event(
                         if not await filter.check_with_warning(event):
                             return None
             return await func(event)
-        
+
         event_bus.subscribe(event_type, wrapper, priority)
+
+        # Register with plugin context if available
+        try:
+            ctx = getattr(sys.modules[func.__module__], "_plugin_context", None)
+            if ctx is not None:
+                ctx.register_event(event_type, func, wrapper, priority)
+        except Exception:
+            pass  # Ignore if context registration fails
+
         return func
 
     return decorator
 
 
 def on_command(
-    name: str, 
-    description: str, 
-    permission: Union[str, List[str], None] = None,
-    filters: Optional[Union[EventFilter, List[EventFilter]]] = None
+    name: str,
+    description: str,
+    permission: Optional[PermissionType] = None,
+    filters: Optional[Union[EventFilter, List[EventFilter]]] = None,
 ):
     """命令处理器注册（支持过滤条件）"""
 
@@ -192,9 +227,17 @@ def on_command(
                         if not await filter.check_with_warning(event):
                             return None
             return await func(event)
-        
+
         # 注册命令（权限检查已经在register.register_command中处理）
         register.register_command(name, description, wrapper, permission)
+
+        # Register with plugin context if available
+        try:
+            ctx = getattr(sys.modules[func.__module__], "_plugin_context", None)
+            if ctx is not None:
+                ctx.register_command(name, wrapper, permission)
+        except Exception:
+            pass  # Ignore if context registration fails
 
         return func
 
@@ -206,6 +249,15 @@ def on_function(name: str):
 
     def decorator(func):
         register.register_function(name, func)
+
+        # Register with plugin context if available
+        try:
+            ctx = getattr(sys.modules[func.__module__], "_plugin_context", None)
+            if ctx is not None:
+                ctx.register_function(name, func)
+        except Exception:
+            pass  # Ignore if context registration fails
+
         return func
 
     return decorator
@@ -214,32 +266,36 @@ def on_function(name: str):
 def on_load():
     """
     插件加载装饰器，在插件被加载时调用
-    
+
     使用示例:
         @on_load()
         async def plugin_load():
             print("插件正在加载...") # 插件加载时执行的初始化代码
     """
+
     def decorator(func):
         # 标记函数为加载钩子
         func._is_load_hook = True
         return func
+
     return decorator
 
 
 def on_unload():
     """
     插件卸载装饰器，在插件被卸载时调用
-    
+
     使用示例:
         @on_unload()
         async def plugin_unload():
             print("插件正在卸载...") # 插件卸载时执行的清理代码
     """
+
     def decorator(func):
         # 标记函数为卸载钩子
         func._is_unload_hook = True
         return func
+
     return decorator
 
 

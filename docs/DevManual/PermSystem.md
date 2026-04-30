@@ -1,159 +1,181 @@
 # 接入权限系统
 
-Coral 内置了权限系统，用户可以根据自己的需求进行权限控制。
+Coral 内置了权限系统，支持基于 `Permission` 对象的权限控制。
 
-关于权限系统的权限的定义/使用，请参阅 [权限系统用户文档](https://github.com/ProjectCoral/Coral/blob/main/docs/UserManual/PermSystem.md)。
+关于权限系统的使用，请参阅 [权限系统用户文档](../UserManual/PermSystem.md)。
 
-## 接入 command
+## 核心概念
 
-通常来说，command 都是需要权限控制的，因此建议在 command 中加入权限控制的逻辑。
+### Permission 对象
 
-1. 注册权限
+权限由 `Permission(root, name, description)` 创建，格式为 `root.name`：
 
-    ```python
-    from Coral import on_command, config
-    @on_command("fetch_self_id", "Fetch self id")
-    async def fetch_self_id(*args):
-        ...
-    ```
+```python
+from Coral.permission import Permission
 
-    这里，我们注册了一个 `fetch_self_id` 命令，我们想要限制只有拥有权限的用户才能执行。
+# 创建权限
+ADMIN = Permission("core", "admin")
+READ = Permission("core", "read")
 
-    如何注册权限？我们可以导入 `perm_system` ，它是一个 `PermSystem` 类的实例，我们可以调用它的 `register_perm` 方法来注册权限：
+# 组合权限
+can_manage = ADMIN | READ  # OR
+can_read = ADMIN & ~READ   # AND NOT
+```
 
-    ```python
-    from Coral import perm_system
-    perm_system.register_perm("test_perm", "Test permission")
-    perm_system.register_perm("test_perm.sub_perm", "Sub permission")
-    ```
-    这里，我们注册了两个权限，`test_perm` 和 `test_perm.sub_perm`。
+### 权限检查
 
-    我建议你注册一个主权限，然后再注册一些子权限，<s>这样可以每个命令都来几个权限</s>。
+```python
+from Coral import perm_system
 
-2. 绑定权限
+# 检查权限（单个或列表）
+perm_system.check_perm(Permission("core", "admin"), user_id, group_id)
+perm_system.check_perm([perm1, perm2], user_id, group_id)  # OR逻辑
+```
 
-    接下来，我们需要在函数中绑定权限。
+## 接入 Command
 
-    Coral 内置的权限系统已经提供了一个快速绑定方式，只需在注册时传入即可：
+1. **注册权限**
 
-    ```python
-    from Coral import on_command, config
-    @on_command(
-        name = "fetch_self_id", 
-        description = "Fetch self id", 
-        permission = ["test_perm", "test_perm.sub_perm"]
-    )
-    async def fetch_self_id(*args):
-        ...
-    ```
+```python
+from Coral import perm_system
+from Coral.permission import Permission
 
-    或是使用过滤器中的 `has_permission`:
+# 注册权限
+perm_system.register_perm(Permission("myplugin", "use", "使用插件"))
+perm_system.register_perm(Permission("myplugin", "admin", "管理插件"))
+```
 
-    ```python
-    from Coral import on_command, config
-    from Coral.filters import has_permission
+2. **绑定权限**
 
-    @on_command(
-        name = "fetch_self_id", 
-        description = "Fetch self id",
-        filters = has_permission(
-            ["test_perm", "test_perm.sub_perm"]
-        ),
-    )
-    async def fetch_self_id(*args):
-        ...
-    ```
+通过 `permission` 参数绑定：
 
-    这里，我们传入了 `["test_perm", "test_perm.sub_perm"]` 作为权限列表，表示只有拥有这两个权限的用户才能执行 `fetch_self_id` 命令。
+```python
+from Coral import on_command
+from Coral.permission import Permission
 
-    **注意**：这里的权限列表可以是任意多个权限，只要用户拥有其中任意一个权限，就能执行命令。
+MY_USE = Permission("myplugin", "use")
 
-3. 使用
+@on_command(
+    name="mycmd",
+    description="我的命令",
+    permission=MY_USE,
+)
+async def mycmd_handler(event):
+    return "命令执行成功"
+```
 
-    如果没有意外，你的权限应该已经可以正常工作了。
+通过过滤器绑定：
 
-    > 输入 `perms show` 查看目前注册的权限，输入 `perms <add|remove> <perm_name> <user_id> <group_id>`  来授予或回收权限。详情请参阅 [权限系统用户文档](https://github.com/ProjectCoral/Coral/blob/main/docs/UserManual/PermSystem.md)。
+```python
+from Coral import on_command
+from Coral.filters import has_permission
+from Coral.permission import Permission
 
-    你可以在代码中，使用 `register.execute_command` 调用命令。
+MY_USE = Permission("myplugin", "use")
 
-    ```python
-    from Coral import register, CommandEvent, MessageChain, UserInfo
-    register.execute_command(
-        event_id="123",
-        platform="qq",
-        self_id="12345",
-        command="fetch_self_id",
-        raw_message=MessageChain([...]),
-        user=UserInfo(...),
-        args=[]
-    )
-    ```
+@on_command(
+    name="mycmd",
+    description="我的命令",
+    filters=has_permission(MY_USE),
+)
+async def mycmd_handler(event):
+    return "命令执行成功"
+```
 
-    若想要仅在代码处调用，不考虑用户侧，可以将 `user` 设置为 `Console`，`group` 设置为 None。
+3. **权限列表（OR逻辑）**
 
-    ```python
-    register.execute_command(
-        CommandEvent(
-            event_id=f"console-{time.time()}",
-            platform="console",
-            self_id="Console",
-            command="fetch_self_id",
-            raw_message=MessageChain([MessageSegment.text(f"fetch_self_id")]),
-            user=UserInfo(
-                platform="system",
-                user_id="Console"
-            ),
-            args=[]
-        )
-    )
-    ```
+```python
+from Coral import on_command
+from Coral.permission import Permission
 
-## 手动接入其他功能
+@on_command(
+    name="mycmd",
+    description="我的命令",
+    permission=[Permission("myplugin", "use"), Permission("myplugin", "admin")],
+)
+async def mycmd_handler(event):
+    return "命令执行成功"
+```
 
-Coral 内置的权限系统并没有为其他功能提供快捷的接入方式，因为这些行为理论上不会被普通用户频繁使用。
+上述配置表示：拥有 `myplugin.use` 或 `myplugin.admin` 任一权限即可执行。
 
-如果你的功能需要权限控制，请继续阅读。
+## 手动权限检查
 
-这里以 Coral 内置插件 `chat_command` 为例，它提供了用户侧的执行命令功能。
+在插件中进行权限检查：
 
-1. 注册权限
+```python
+from Coral import perm_system
+from Coral.permission import Permission
 
-    首先，我们需要注册权限：
+class MyPlugin:
+    def __init__(self, register, perm_system):
+        self.register = register
+        self.perm = perm_system
 
-    ```python
-    from Coral import perm_system
-    perm_system.register_perm("chat_command", "Base Permission")
-    perm_system.register_perm("chat_command.execute", "Allows the user to execute commands in chat")
-    ```
+    async def handle_event(self, event):
+        user_id = event.user.user_id
+        group_id = event.group.group_id if event.group else -1
 
-2. 编写权限检查代码
+        if not self.perm.check_perm(Permission("myplugin", "use"), user_id, group_id):
+            return None  # 无权限
 
-    接下来，我们需要编写权限检查代码。
+        # 处理逻辑
+        return "处理成功"
+```
 
-    ```python
-    class ChatCommand:
-        register = None
-        perm_system = None
-        
-        def __init__(self, register, perm_system):
-            self.register = register
-            self.perm_system = perm_system
+## 根权限匹配
 
-        async def chat_command(self, message: MessageEvent):
-            ori_message = message.message
-            raw_message = ori_message.to_plain_text()
-            sender_user_id = message.user.user_id
-            group_id = message.group.group_id if message.group else None
+权限系统支持根权限匹配：拥有根权限（如 `myplugin.`）可以匹配所有子权限（如 `myplugin.read`、`myplugin.write`）。
 
-            if not raw_message.startswith('!'):
-                return None
+```python
+from Coral.permission import Permission
+from Coral import perm_system
 
-            logger.info(f"Received command: {raw_message}")
-            if not self.perm_system.check_perm(["chat_command", "chat_command.execute"], sender_user_id, group_id):
-                return None
-            # ...
-    ```
+# 注册根权限
+perm_system.register_perm(Permission("myplugin", "", "插件根权限"))
+perm_system.register_perm(Permission("myplugin", "read", "读取"))
+perm_system.register_perm(Permission("myplugin", "write", "写入"))
 
-    这里，我们在 `chat_command` 函数中检查 `chat_command` 和 `chat_command.execute` 两个权限，并使用 `check_perm` 方法进行检查。
+# 拥有根权限的用户可以匹配所有子权限
+perm_system.grant_global_perm(Permission("myplugin", ""), user_id)
+```
 
-    若用户没有这两个权限，则直接返回 `None`，表示不执行命令。
+## 权限管理命令
+
+用户可以使用内置命令管理权限：
+
+```
+perms show                          # 显示所有已注册权限
+perms list                          # 列出用户和群组权限
+perms add <权限名> <用户ID> [群组ID]  # 添加权限
+perms remove <权限名> <用户ID> [群组ID] # 移除权限
+perms grant <权限名> <用户ID>         # 授予全局权限
+perms revoke <权限名> <用户ID>         # 撤销全局权限
+```
+
+权限名格式：`root.name`，如 `core.admin`、`myplugin.use`。
+
+## Console 用户
+
+`Console` 用户拥有所有权限，可用于代码中直接调用命令：
+
+```python
+from Coral import register
+from Coral.protocol import CommandEvent, MessageChain, UserInfo, MessageSegment
+
+register.execute_command(CommandEvent(
+    event_id=f"console-{time.time()}",
+    platform="console",
+    self_id="Console",
+    command="mycmd",
+    raw_message=MessageChain([MessageSegment.text("mycmd")]),
+    user=UserInfo(platform="system", user_id="Console"),
+    args=[]
+))
+```
+
+## 相关资源
+
+- [权限系统用户文档](../UserManual/PermSystem.md) - 用户权限管理
+- [过滤器系统指南](Filters.md) - 消息过滤
+- [插件开发指南](../PluginDev.md) - 插件开发

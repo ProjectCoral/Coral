@@ -3,7 +3,6 @@ import logging
 import json
 from typing import Any, Dict
 from Coral.driver import BaseDriver
-from Coral.adapter import BaseAdapter
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import uvicorn
 
@@ -13,9 +12,9 @@ logger = logging.getLogger(__name__)
 class ReversewsDriver(BaseDriver):
     """反向WebSocket驱动器（FastAPI实现）"""
     PROTOCOL = 'onebotv11'
-    
-    def __init__(self, adapter: BaseAdapter, config: Dict[str, Any]):
-        super().__init__(adapter, config)
+
+    def __init__(self, bridge, config: Dict[str, Any], driver_id: str = None):
+        super().__init__(bridge, config, driver_id)
         self.websocket = None
         self.path = config.get('path', '/ws/api')
         self.port = config.get('port', 21050)
@@ -47,20 +46,32 @@ class ReversewsDriver(BaseDriver):
         logger.info("Reverse WebSocket driver stopped")
     
     async def send_action(self, action: Dict[str, Any]):
-        """发送动作到平台"""
+        """发送动作到平台（内部使用，由 _do_send 调用）"""
         if not self.websocket:
             logger.warning("No active WebSocket connection, cannot send action")
             return
-        
+
         try:
             # 添加回显标识
             if 'echo' not in action:
                 action['echo'] = f"action_{id(action)}"
-            
+
             await self.websocket.send_text(json.dumps(action))
             logger.debug(f"Action sent: {action}")
         except Exception as e:
             logger.error(f"Error sending action: {e}")
+
+    async def send_action_raw(self, data: bytes) -> None:
+        """发送原始字节数据到平台"""
+        if not self.websocket:
+            logger.warning("No active WebSocket connection, cannot send raw data")
+            return
+
+        try:
+            await self.websocket.send_text(data.decode())
+            logger.debug(f"Raw data sent: {len(data)} bytes")
+        except Exception as e:
+            logger.error(f"Error sending raw data: {e}")
     
     async def _handle_connection(self, websocket: WebSocket):
         """处理WebSocket连接（FastAPI路由处理函数）"""

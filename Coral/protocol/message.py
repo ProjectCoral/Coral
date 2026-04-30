@@ -43,6 +43,7 @@ class GroupInfo(MessageBase):
 
 class ShareType(Enum):
     """分享类型枚举"""
+
     WEBSITE = "website"
     MUSIC = "music"
     VIDEO = "video"
@@ -52,18 +53,19 @@ class ShareType(Enum):
 @dataclass
 class Share(MessageBase):
     """分享数据类
-    
+
     根据type字段的不同，其他字段的含义也不同：
     - website: name, url
     - music: name, platform, id
     - video: name, url
     - location: lon, lat, alt
     """
+
     type: str  # 分享类型
     name: Optional[str] = None  # 名称（website/music/video使用）
-    url: Optional[str] = None   # 链接（website/video使用）
+    url: Optional[str] = None  # 链接（website/video使用）
     platform: Optional[str] = None  # 平台（music使用）
-    id: Optional[str] = None    # ID（music使用）
+    id: Optional[str] = None  # ID（music使用）
     lon: Optional[float] = None  # 经度（location使用）
     lat: Optional[float] = None  # 纬度（location使用）
     alt: Optional[float] = None  # 海拔（location使用，可选）
@@ -108,7 +110,7 @@ class MessageSegment(MessageBase):
     @staticmethod
     def audio(url: str, record: bool = False) -> MessageSegment:
         """创建音频消息段
-        
+
         Args:
             url: 音频URL
             record: 是否为录音（用于onebot适配器适配）
@@ -118,7 +120,7 @@ class MessageSegment(MessageBase):
     @staticmethod
     def share(share_obj: Union[Share, Dict[str, Any]]) -> MessageSegment:
         """创建分享消息段
-        
+
         Args:
             share_obj: Share对象或字典
         """
@@ -126,52 +128,44 @@ class MessageSegment(MessageBase):
             share_data = Share(**share_obj)
         else:
             share_data = share_obj
-        
+
         return MessageSegment(type="share", data=share_data.to_dict())
 
     @staticmethod
     def share_website(name: str, url: str) -> MessageSegment:
         """创建网站分享消息段"""
-        return MessageSegment.share(Share(
-            type=ShareType.WEBSITE.value,
-            name=name,
-            url=url
-        ))
+        return MessageSegment.share(
+            Share(type=ShareType.WEBSITE.value, name=name, url=url)
+        )
 
     @staticmethod
     def share_music(name: str, platform: str, id: str) -> MessageSegment:
         """创建音乐分享消息段
-        
+
         Args:
             name: 音乐名称
             platform: 平台 (qq, 163, xm)
             id: 音乐ID
         """
-        return MessageSegment.share(Share(
-            type=ShareType.MUSIC.value,
-            name=name,
-            platform=platform,
-            id=id
-        ))
+        return MessageSegment.share(
+            Share(type=ShareType.MUSIC.value, name=name, platform=platform, id=id)
+        )
 
     @staticmethod
     def share_video(name: str, url: str) -> MessageSegment:
         """创建视频分享消息段"""
-        return MessageSegment.share(Share(
-            type=ShareType.VIDEO.value,
-            name=name,
-            url=url
-        ))
+        return MessageSegment.share(
+            Share(type=ShareType.VIDEO.value, name=name, url=url)
+        )
 
     @staticmethod
-    def share_location(lon: float, lat: float, alt: Optional[float] = None) -> MessageSegment:
+    def share_location(
+        lon: float, lat: float, alt: Optional[float] = None
+    ) -> MessageSegment:
         """创建位置分享消息段"""
-        return MessageSegment.share(Share(
-            type=ShareType.LOCATION.value,
-            lon=lon,
-            lat=lat,
-            alt=alt
-        ))
+        return MessageSegment.share(
+            Share(type=ShareType.LOCATION.value, lon=lon, lat=lat, alt=alt)
+        )
 
 
 @dataclass
@@ -186,7 +180,9 @@ class MessageChain(MessageBase):
         return cls([MessageSegment.text(content)])
 
     @classmethod
-    def image(cls, url: str, width: Optional[int] = None, height: Optional[int] = None) -> "MessageChain":
+    def image(
+        cls, url: str, width: Optional[int] = None, height: Optional[int] = None
+    ) -> "MessageChain":
         """创建图片消息链"""
         return cls([MessageSegment.image(url, width, height)])
 
@@ -213,7 +209,9 @@ class MessageChain(MessageBase):
         self.segments.append(MessageSegment.text(content))
         return self
 
-    def add_image(self, url: str, width: Optional[int] = None, height: Optional[int] = None) -> "MessageChain":
+    def add_image(
+        self, url: str, width: Optional[int] = None, height: Optional[int] = None
+    ) -> "MessageChain":
         """添加图片消息段（链式调用）"""
         self.segments.append(MessageSegment.image(url, width, height))
         return self
@@ -258,7 +256,9 @@ class MessageChain(MessageBase):
         self.segments.append(MessageSegment.share_video(name, url))
         return self
 
-    def add_share_location(self, lon: float, lat: float, alt: Optional[float] = None) -> "MessageChain":
+    def add_share_location(
+        self, lon: float, lat: float, alt: Optional[float] = None
+    ) -> "MessageChain":
         """添加位置分享消息段（链式调用）"""
         self.segments.append(MessageSegment.share_location(lon, lat, alt))
         return self
@@ -294,10 +294,16 @@ class MessageChain(MessageBase):
         return cls([MessageSegment.share_video(name, url)])
 
     @classmethod
-    def share_location(cls, lon: float, lat: float, alt: Optional[float] = None) -> "MessageChain":
+    def share_location(
+        cls, lon: float, lat: float, alt: Optional[float] = None
+    ) -> "MessageChain":
         """创建位置分享消息链"""
         return cls([MessageSegment.share_location(lon, lat, alt)])
 
     def to_plain_text(self) -> str:
         """转换为纯文本（忽略非文本消息段和头尾空格）"""
-        return "".join(seg.data for seg in self.segments if seg.type == "text" and isinstance(seg.data, str)).strip()
+        return "".join(
+            seg.data
+            for seg in self.segments
+            if seg.type == "text" and isinstance(seg.data, str)
+        ).strip()

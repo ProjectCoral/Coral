@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Coral"
+version = "0.1.0"
+description = "A plugin-based chatbot framework"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "AGPL-3.0"}
+authors = [
+    {name = "NaivG"}
+]
+keywords = ["chatbot", "plugin", "framework"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: GNU Affero General Public License v3 (AGPLv3)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "fastapi",
+    "requests",
+    "uvicorn[standard]",
+    "apscheduler",
+    "pyfiglet",
+    "colorama",
+    "prompt_toolkit>=3.0.0",
+    "rich",
+    "psutil",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "black",
+    "mypy",
+]
+
+dashboard = [
+    "flet[web]==0.28.3",
+]
+
+[project.scripts]
+coral = "main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["Coral*", "utils*"]
+
+[tool.setuptools.package-data]
+Coral = ["py.typed"]
+
+[tool.black]
+target-version = ['py310', 'py311', 'py312']

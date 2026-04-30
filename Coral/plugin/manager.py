@@ -16,8 +16,12 @@ from .registry import PluginRegistry
 from .commands import PluginCommands
 from .models import PluginMeta, DependencyGraph, PluginState
 from .exceptions import (
-    PluginError, PluginNotFoundError, PluginDependencyError,
-    PluginCompatibilityError, PluginLoadError, DependencyCycleError
+    PluginError,
+    PluginNotFoundError,
+    PluginDependencyError,
+    PluginCompatibilityError,
+    PluginLoadError,
+    DependencyCycleError,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,11 +32,11 @@ PLUGINMANAGER_META = 250606
 
 class PluginManager:
     """主插件管理器，支持依赖感知的并发加载。"""
-    
+
     def __init__(self, register, config, perm_system, plugin_dir="./plugins"):
         """
         初始化插件管理器。
-        
+
         Args:
             register: 注册器对象
             config: 配置对象
@@ -42,53 +46,53 @@ class PluginManager:
         self.config = config
         self.perm_system = perm_system
         self.register = register
-        
+
         # Set plugin directory from config or use default
         self.plugin_dir = self.config.get("plugin_dir", plugin_dir)
         self.config.set("pluginmanager_version", PLUGINMANAGER_VERSION)
-        
+
         # Initialize components
         self.metadata = PluginMetadata()
         self.loader = PluginLoader(config, register)
         self.registry = PluginRegistry(self.plugin_dir)
         self.commands = PluginCommands(self)
-        
+
         # Plugin manager state
         self.pluginmanager_version = self.config.get("pluginmanager_version")
         self.pluginmanager_meta = PLUGINMANAGER_META
         self._is_loading = False
-        
+
         # Create plugin directory if it doesn't exist
         if not os.path.exists(self.plugin_dir):
             os.makedirs(self.plugin_dir, exist_ok=True)
             logger.debug(f"Created plugin directory: {self.plugin_dir}")
-    
+
     async def load_all_plugins(self) -> Tuple[bool, str]:
         """
         加载所有启用的插件，支持依赖感知的并发加载。
-        
+
         Returns:
-            Tuple (success, message) 
+            Tuple (success, message)
         """
         if self._is_loading:
             return False, "Plugin loading already in progress"
-        
+
         self._is_loading = True
         start_time = time.time()
-        
+
         try:
             if not os.path.exists(self.plugin_dir):
                 logger.warning(f"Plugin directory {self.plugin_dir} does not exist")
                 return False, f"Plugin directory {self.plugin_dir} does not exist"
-            
+
             logger.info(f"Loading plugins from {self.plugin_dir}")
-            
+
             # 1. Discover and parse all plugin metadata
             plugin_dirs = self.metadata.get_enabled_plugin_dirs(self.plugin_dir)
             if not plugin_dirs:
                 logger.debug("No plugins found to load")
                 return True, "No plugins found to load"
-            
+
             plugins_meta = {}
             for plugin_dir_path in plugin_dirs:
                 plugin_name = os.path.basename(plugin_dir_path)
@@ -97,85 +101,95 @@ class PluginManager:
                     plugins_meta[plugin_name] = meta
                     # Register plugin in registry
                     self.registry.register_plugin(plugin_name, meta)
-            
+
             if not plugins_meta:
                 logger.debug("No valid plugins found")
                 return True, "No valid plugins found"
-            
+
             # 2. Build dependency graph
             dependency_graph = self.metadata.build_dependency_graph(plugins_meta)
-            
+
             # 3. Check for circular dependencies
             if dependency_graph.has_cycle():
                 return False, "Circular dependency detected in plugins"
-            
+
             # 4. Get topological sort (loading order by layers)
             try:
                 load_layers = dependency_graph.topological_sort()
             except DependencyCycleError as e:
                 return False, f"Dependency error: {str(e)}"
-            
+
             # 5. Load plugins layer by layer (plugins in same layer can load concurrently)
             total_loaded = 0
             total_failed = 0
             loaded_plugins: Set[str] = set()
-            
+
             for layer_index, layer_plugins in enumerate(load_layers):
-                logger.debug(f"Loading plugin layer {layer_index + 1}/{len(load_layers)}: {layer_plugins}")
-                
+                logger.debug(
+                    f"Loading plugin layer {layer_index + 1}/{len(load_layers)}: {layer_plugins}"
+                )
+
                 # Prepare plugins for this layer
                 plugins_to_load = []
                 for plugin_name in layer_plugins:
                     if plugin_name in plugins_meta:
                         meta = plugins_meta[plugin_name]
-                        plugin_path = meta.path or os.path.join(self.plugin_dir, plugin_name)
+                        plugin_path = meta.path or os.path.join(
+                            self.plugin_dir, plugin_name
+                        )
                         plugins_to_load.append((plugin_name, plugin_path, meta))
-                        
+
                         # Mark dependencies as met
-                        deps_met = all(dep in loaded_plugins for dep in meta.dependencies)
+                        deps_met = all(
+                            dep in loaded_plugins for dep in meta.dependencies
+                        )
                         self.registry.update_dependencies_met(plugin_name, deps_met)
-                
+
                 # Load plugins in this layer concurrently
                 results = await self.loader.load_plugins_concurrently(
                     plugins_to_load, loaded_plugins
                 )
-                
+
                 # Process results
                 for plugin_name, (success, error, load_time) in results.items():
                     if success:
                         self.registry.mark_as_loaded(plugin_name, load_time)
                         total_loaded += 1
-                        logger.info(f"✓ Loaded plugin {plugin_name} in {load_time:.2f}s")
+                        logger.info(
+                            f"✓ Loaded plugin {plugin_name} in {load_time:.2f}s"
+                        )
                     else:
-                        self.registry.mark_as_error(plugin_name, error or "Unknown error")
+                        self.registry.mark_as_error(
+                            plugin_name, error or "Unknown error"
+                        )
                         total_failed += 1
                         logger.error(f"✗ Failed to load plugin {plugin_name}: {error}")
-            
+
             # 6. Register plugin manager commands
             self._register_commands()
-            
+
             # 7. Log loading metrics
             load_time = time.time() - start_time
             self._log_loading_metrics(total_loaded, total_failed, load_time)
-            
+
             message = f"Loaded {total_loaded} plugins, {total_failed} failed in {load_time:.2f}s"
             logger.info(message)
-            
+
             return True, message
-            
+
         except Exception as e:
             logger.exception(f"Error loading plugins: {e}")
             return False, f"Error loading plugins: {str(e)}"
         finally:
             self._is_loading = False
-    
+
     async def load_plugin(self, plugin_name: str) -> Tuple[bool, str]:
         """
         加载单个插件。
-        
+
         Args:
             plugin_name: 要加载的插件名称
-            
+
         Returns:
             Tuple (success, message)
         """
@@ -186,71 +200,85 @@ class PluginManager:
                 # Check for disabled plugin
                 disabled_path = plugin_path + ".disabled"
                 if os.path.isdir(disabled_path):
-                    return False, f"Plugin {plugin_name} is disabled. Use 'plugin enable {plugin_name}' first."
+                    return (
+                        False,
+                        f"Plugin {plugin_name} is disabled. Use 'plugin enable {plugin_name}' first.",
+                    )
                 return False, f"Plugin {plugin_name} not found"
-            
+
             # Get plugin metadata
             meta = self.metadata.get_plugin_meta(plugin_path, plugin_name)
             if not meta:
                 return False, f"Failed to parse metadata for plugin {plugin_name}"
-            
+
             # Check compatibility
             if not meta.is_compatible(self.pluginmanager_meta):
-                return False, f"Plugin {plugin_name} is not compatible with this version"
-            
+                return (
+                    False,
+                    f"Plugin {plugin_name} is not compatible with this version",
+                )
+
             # Check dependencies
             missing_deps = []
             for dep in meta.dependencies:
                 if not self.registry.is_loaded(dep):
                     missing_deps.append(dep)
-            
+
             if missing_deps:
                 return False, f"Missing dependencies: {', '.join(missing_deps)}"
-            
+
             # Register plugin in registry if not already registered
             if not self.registry.is_registered(plugin_name):
                 self.registry.register_plugin(plugin_name, meta)
-            
+
             # Load the plugin
-            loaded_plugin_names = {entry.name for entry in self.registry.get_loaded_plugins()}
+            loaded_plugin_names = {
+                entry.name for entry in self.registry.get_loaded_plugins()
+            }
             success, error, load_time = await self.loader.load_plugin_with_deps(
                 plugin_name, plugin_path, meta, loaded_plugin_names
             )
-            
+
             if success:
                 self.registry.mark_as_loaded(plugin_name, load_time)
-                return True, f"Plugin {plugin_name} loaded successfully in {load_time:.2f}s"
+                return (
+                    True,
+                    f"Plugin {plugin_name} loaded successfully in {load_time:.2f}s",
+                )
             else:
                 self.registry.mark_as_error(plugin_name, error or "Unknown error")
                 return False, f"Failed to load plugin {plugin_name}: {error}"
-                
+
         except Exception as e:
             logger.exception(f"Error loading plugin {plugin_name}: {e}")
             return False, f"Error loading plugin {plugin_name}: {str(e)}"
-    
+
     async def unload_plugin(self, plugin_name: str) -> Tuple[bool, str]:
         """
         卸载单个插件。
-        
+
         Args:
             plugin_name: 要卸载的插件名称
-            
+
         Returns:
             Tuple (success, message)
         """
         if not self.registry.is_loaded(plugin_name):
             return False, f"Plugin {plugin_name} is not loaded"
-        
+
         try:
             # Check if other plugins depend on this one
             dependents = []
             for plugin_entry in self.registry.get_loaded_plugins():
                 if plugin_name in plugin_entry.meta.dependencies:
                     dependents.append(plugin_entry.name)
-            
+
             if dependents:
-                return False, f"Cannot unload {plugin_name}: other plugins depend on it: {', '.join(dependents)}"
-            
+                return (
+                    False,
+                    f"Cannot unload {plugin_name}: other plugins depend on it: {', '.join(dependents)}",
+                )
+
             # Unload the plugin
             success = await self.loader.unload_plugin(plugin_name)
             if success:
@@ -258,18 +286,18 @@ class PluginManager:
                 return True, f"Plugin {plugin_name} unloaded successfully"
             else:
                 return False, f"Failed to unload plugin {plugin_name}"
-                
+
         except Exception as e:
             logger.exception(f"Error unloading plugin {plugin_name}: {e}")
             return False, f"Error unloading plugin {plugin_name}: {str(e)}"
-    
+
     async def enable_plugin(self, plugin_name: str) -> Tuple[bool, str]:
         """
         启用单个插件。
-        
+
         Args:
             plugin_name: 要启用的插件名称
-            
+
         Returns:
             Tuple (success, message)
         """
@@ -277,50 +305,58 @@ class PluginManager:
             # Check if plugin exists (disabled version)
             disabled_path = os.path.join(self.plugin_dir, plugin_name + ".disabled")
             enabled_path = os.path.join(self.plugin_dir, plugin_name)
-            
+
             if not os.path.isdir(disabled_path):
                 # Check if already enabled
                 if os.path.isdir(enabled_path):
                     return False, f"Plugin {plugin_name} is already enabled"
                 return False, f"Plugin {plugin_name} not found"
-            
+
             # Rename directory to enable plugin
             os.rename(disabled_path, enabled_path)
-            
+
             try:
                 # Try to load the plugin after enabling
                 success, load_message = await self.load_plugin(plugin_name)
                 if not success:
                     # Load failed, rollback rename
                     os.rename(enabled_path, disabled_path)
-                    return False, f"Plugin {plugin_name} enabled but failed to load: {load_message}"
-                
+                    return (
+                        False,
+                        f"Plugin {plugin_name} enabled but failed to load: {load_message}",
+                    )
+
                 # Update registry
                 self.registry.mark_as_enabled(plugin_name)
-                
+
                 # Clear metadata cache for this plugin
                 self.metadata.clear_cache()
-                
+
                 logger.info(f"Enabled plugin {plugin_name}")
                 return True, f"Plugin {plugin_name} enabled and loaded successfully"
-                
+
             except Exception as load_error:
                 # Load failed with exception, rollback rename
                 os.rename(enabled_path, disabled_path)
-                logger.exception(f"Error loading plugin {plugin_name} after enabling: {load_error}")
-                return False, f"Plugin {plugin_name} enabled but failed to load: {str(load_error)}"
-            
+                logger.exception(
+                    f"Error loading plugin {plugin_name} after enabling: {load_error}"
+                )
+                return (
+                    False,
+                    f"Plugin {plugin_name} enabled but failed to load: {str(load_error)}",
+                )
+
         except Exception as e:
             logger.exception(f"Error enabling plugin {plugin_name}: {e}")
             return False, f"Error enabling plugin {plugin_name}: {str(e)}"
-    
+
     async def disable_plugin(self, plugin_name: str) -> Tuple[bool, str]:
         """
         禁用单个插件。
-        
+
         Args:
             plugin_name: 要禁用的插件名称
-            
+
         Returns:
             Tuple (success, message)
         """
@@ -328,32 +364,32 @@ class PluginManager:
             # Check if plugin exists
             plugin_path = os.path.join(self.plugin_dir, plugin_name)
             disabled_path = plugin_path + ".disabled"
-            
+
             if not os.path.isdir(plugin_path):
                 # Check if already disabled
                 if os.path.isdir(disabled_path):
                     return False, f"Plugin {plugin_name} is already disabled"
                 return False, f"Plugin {plugin_name} not found"
-            
+
             # Unload plugin if it's loaded
             if self.registry.is_loaded(plugin_name):
                 success, message = await self.unload_plugin(plugin_name)
                 if not success:
                     return False, f"Failed to unload plugin before disabling: {message}"
-            
+
             try:
                 # Rename directory to disable plugin
                 os.rename(plugin_path, disabled_path)
-                
+
                 # Update registry
                 self.registry.mark_as_disabled(plugin_name)
-                
+
                 # Clear metadata cache for this plugin
                 self.metadata.clear_cache()
-                
+
                 logger.info(f"Disabled plugin {plugin_name}")
                 return True, f"Plugin {plugin_name} disabled successfully"
-                
+
             except Exception as rename_error:
                 # Rename failed, but plugin is already unloaded
                 # Try to reload the plugin to restore consistency
@@ -362,22 +398,29 @@ class PluginManager:
                     # This is an inconsistent state, try to reload
                     reload_success, reload_msg = await self.load_plugin(plugin_name)
                     if not reload_success:
-                        logger.error(f"Failed to restore plugin {plugin_name} after rename failure: {reload_msg}")
-                
-                logger.exception(f"Error renaming plugin directory for {plugin_name}: {rename_error}")
-                return False, f"Failed to disable plugin {plugin_name}: {str(rename_error)}"
-            
+                        logger.error(
+                            f"Failed to restore plugin {plugin_name} after rename failure: {reload_msg}"
+                        )
+
+                logger.exception(
+                    f"Error renaming plugin directory for {plugin_name}: {rename_error}"
+                )
+                return (
+                    False,
+                    f"Failed to disable plugin {plugin_name}: {str(rename_error)}",
+                )
+
         except Exception as e:
             logger.exception(f"Error disabling plugin {plugin_name}: {e}")
             return False, f"Error disabling plugin {plugin_name}: {str(e)}"
-    
+
     async def reload_plugin(self, plugin_name: str) -> Tuple[bool, str]:
         """
         重载单个插件。
-        
+
         Args:
             plugin_name: 要重载的插件名称
-            
+
         Returns:
             Tuple (success, message)
         """
@@ -386,56 +429,61 @@ class PluginManager:
             success, message = await self.unload_plugin(plugin_name)
             if not success:
                 return False, f"Failed to unload plugin before reload: {message}"
-        
+
         # Then load again
         return await self.load_plugin(plugin_name)
-    
+
     async def unload_all_plugins(self) -> Tuple[bool, str]:
         """
         卸载所有已加载的插件（用于框架关闭）。
-        
+
         Returns:
             Tuple (success, message)
         """
         start_time = time.time()
         loaded_plugins = [entry.name for entry in self.registry.get_loaded_plugins()]
-        
+
         if not loaded_plugins:
             return True, "No plugins to unload"
-        
-        logger.info(f"Unloading {len(loaded_plugins)} plugins for framework shutdown...")
-        
+
+        logger.info(
+            f"Unloading {len(loaded_plugins)} plugins for framework shutdown..."
+        )
+
         total_unloaded = 0
         total_failed = 0
         errors = []
-        
+
         # 在框架关闭时，我们需要按依赖关系的逆序卸载插件
         # 即先卸载依赖其他插件的插件，最后卸载被依赖的插件
         # 获取依赖图信息
         from .metadata import PluginMetadata
+
         temp_metadata = PluginMetadata()
-        
+
         # 收集所有插件的元数据
         plugins_meta = {}
         for plugin_name in loaded_plugins:
             plugin_info = self.registry.get_plugin_info(plugin_name)
             if plugin_info:
                 plugins_meta[plugin_name] = plugin_info.meta
-        
+
         if plugins_meta:
             # 构建依赖图
             dependency_graph = temp_metadata.build_dependency_graph(plugins_meta)
-            
+
             # 获取拓扑排序（正向加载顺序）
             try:
                 load_layers = dependency_graph.topological_sort()
                 # 反转顺序得到卸载顺序（从最后加载的开始卸载）
                 unload_layers = list(reversed(load_layers))
-                
+
                 # 按层卸载
                 for layer_index, layer_plugins in enumerate(unload_layers):
-                    logger.debug(f"Unloading plugin layer {layer_index + 1}/{len(unload_layers)}: {layer_plugins}")
-                    
+                    logger.debug(
+                        f"Unloading plugin layer {layer_index + 1}/{len(unload_layers)}: {layer_plugins}"
+                    )
+
                     # 卸载这一层的所有插件
                     for plugin_name in layer_plugins:
                         if plugin_name in loaded_plugins:
@@ -446,9 +494,13 @@ class PluginManager:
                             else:
                                 total_failed += 1
                                 errors.append(f"{plugin_name}: {message}")
-                                logger.error(f"✗ Failed to unload plugin {plugin_name}: {message}")
+                                logger.error(
+                                    f"✗ Failed to unload plugin {plugin_name}: {message}"
+                                )
             except Exception as e:
-                logger.warning(f"Failed to determine dependency order for unloading: {e}")
+                logger.warning(
+                    f"Failed to determine dependency order for unloading: {e}"
+                )
                 # 回退到简单顺序卸载
                 for plugin_name in loaded_plugins:
                     success, message = await self.unload_plugin(plugin_name)
@@ -458,7 +510,9 @@ class PluginManager:
                     else:
                         total_failed += 1
                         errors.append(f"{plugin_name}: {message}")
-                        logger.error(f"✗ Failed to unload plugin {plugin_name}: {message}")
+                        logger.error(
+                            f"✗ Failed to unload plugin {plugin_name}: {message}"
+                        )
         else:
             # 没有元数据信息，简单顺序卸载
             for plugin_name in loaded_plugins:
@@ -470,24 +524,24 @@ class PluginManager:
                     total_failed += 1
                     errors.append(f"{plugin_name}: {message}")
                     logger.error(f"✗ Failed to unload plugin {plugin_name}: {message}")
-        
+
         # 清理注册表和缓存
         self.registry.clear()
         self.metadata.clear_cache()
-        
+
         unload_time = time.time() - start_time
         message = f"Unloaded {total_unloaded} plugins, {total_failed} failed in {unload_time:.2f}s"
-        
+
         if errors:
             message += f". Errors: {', '.join(errors[:3])}"  # 只显示前3个错误
-        
+
         logger.info(message)
         return total_failed == 0, message
-    
+
     async def reload_all_plugins(self) -> Tuple[bool, str]:
         """
         重载所有插件。
-        
+
         Returns:
             Tuple (success, message)
         """
@@ -495,26 +549,26 @@ class PluginManager:
         loaded_plugins = [entry.name for entry in self.registry.get_loaded_plugins()]
         for plugin_name in loaded_plugins:
             await self.unload_plugin(plugin_name)
-        
+
         # Clear registry and metadata cache
         self.registry.clear()
         self.metadata.clear_cache()
-        
+
         # Load all plugins again
         return await self.load_all_plugins()
-    
+
     async def list_plugins(self, filter_type: str = "all") -> str:
         """
         列出插件，根据过滤类型（所有、已加载、已启用、已禁用）。
-        
+
         Args:
             filter_type: 过滤类型 (all, loaded, enabled, disabled)
-            
+
         Returns:
             str 格式化的插件列表
         """
         filter_type = filter_type.lower()
-        
+
         if filter_type == "loaded":
             plugins = self.registry.get_loaded_plugins()
             title = "Loaded Plugins"
@@ -527,49 +581,53 @@ class PluginManager:
         else:  # "all"
             plugins = self.registry.get_all_plugins()
             title = "All Plugins"
-        
+
         if not plugins:
             return f"{title}: No plugins found"
-        
+
         lines = [f"{title} ({len(plugins)}):"]
         lines.append("-" * 40)
-        
+
         for plugin in plugins:
             status = "✓" if plugin.is_loaded else "✗"
             disabled = " (disabled)" if plugin.is_disabled else ""
-            version = f" v{plugin.meta.version}" if plugin.meta.version != "1.0.0" else ""
-            
+            version = (
+                f" v{plugin.meta.version}" if plugin.meta.version != "1.0.0" else ""
+            )
+
             line = f"{status} {plugin.name}{version}{disabled}"
             if plugin.meta.description:
                 line += f" - {plugin.meta.description}"
-            
+
             lines.append(line)
-        
+
         # Add counts summary
         counts = self.registry.get_plugin_count()
         lines.append("-" * 40)
-        lines.append(f"Total: {counts['total']}, Loaded: {counts['loaded']}, "
-                    f"Enabled: {counts['enabled']}, Disabled: {counts['disabled']}")
-        
+        lines.append(
+            f"Total: {counts['total']}, Loaded: {counts['loaded']}, "
+            f"Enabled: {counts['enabled']}, Disabled: {counts['disabled']}"
+        )
+
         return "\n".join(lines)
-    
+
     async def get_plugin_stats(self, plugin_name: str) -> str:
         """
         获取单个插件的统计信息。
-        
+
         Args:
             plugin_name: 插件名称
-            
+
         Returns:
             格式化的统计信息
         """
         plugin_info = self.registry.get_plugin_info(plugin_name)
         if not plugin_info:
             raise PluginNotFoundError(f"Plugin {plugin_name} not found")
-        
+
         metrics = plugin_info.metrics
         meta = plugin_info.meta
-        
+
         lines = [
             f"Statistics for plugin: {plugin_name}",
             "-" * 40,
@@ -590,40 +648,45 @@ class PluginManager:
             "",
             "Dependencies:",
         ]
-        
+
         if meta.dependencies:
             for dep in meta.dependencies:
                 dep_loaded = "✓" if self.registry.is_loaded(dep) else "✗"
                 lines.append(f"  {dep_loaded} {dep}")
         else:
             lines.append("  None")
-        
+
         lines.append("")
         lines.append(f"Description: {meta.description}")
-        
+
         return "\n".join(lines)
-    
+
     async def get_overall_stats(self) -> str:
         """
         获取所有插件的整体统计信息。
-        
+
         Returns:
             str 格式化的整体统计信息
         """
         counts = self.registry.get_plugin_count()
         loaded_plugins = self.registry.get_loaded_plugins()
-        
+
         # Calculate total load time
         total_load_time = sum(plugin.metrics.load_time for plugin in loaded_plugins)
         avg_load_time = total_load_time / len(loaded_plugins) if loaded_plugins else 0
-        
+
         # Calculate total errors
         total_errors = sum(plugin.metrics.total_errors for plugin in loaded_plugins)
-        
+
         # Calculate total calls
         total_calls = sum(plugin.metrics.total_calls for plugin in loaded_plugins)
-        avg_execution_time = sum(plugin.metrics.avg_execution_time for plugin in loaded_plugins) / len(loaded_plugins) if loaded_plugins else 0
-        
+        avg_execution_time = (
+            sum(plugin.metrics.avg_execution_time for plugin in loaded_plugins)
+            / len(loaded_plugins)
+            if loaded_plugins
+            else 0
+        )
+
         lines = [
             "Overall Plugin Statistics",
             "-" * 40,
@@ -645,27 +708,27 @@ class PluginManager:
             "",
             "Plugin Manager Status:",
             f"  Is Loading: {'Yes' if self._is_loading else 'No'}",
-            f"  Compatibility Version: {self.pluginmanager_meta}"
+            f"  Compatibility Version: {self.pluginmanager_meta}",
         ]
-        
+
         return "\n".join(lines)
-    
+
     async def get_plugin_info(self, plugin_name: str) -> str:
         """
         获取单个插件的详细信息。
-        
+
         Args:
             plugin_name: 插件名称
-            
+
         Returns:
             str 插件详细信息
         """
         plugin_info = self.registry.get_plugin_info(plugin_name)
         if not plugin_info:
             raise PluginNotFoundError(f"Plugin {plugin_name} not found")
-        
+
         meta = plugin_info.meta
-        
+
         lines = [
             f"Plugin Information: {plugin_name}",
             "-" * 40,
@@ -682,9 +745,9 @@ class PluginManager:
             "Description:",
             f"  {meta.description}",
             "",
-            "Dependencies:"
+            "Dependencies:",
         ]
-        
+
         if meta.dependencies:
             for dep in meta.dependencies:
                 dep_loaded = "✓" if self.registry.is_loaded(dep) else "✗"
@@ -692,87 +755,89 @@ class PluginManager:
                 lines.append(f"  {dep_loaded} {dep} (exists: {dep_exists})")
         else:
             lines.append("  None")
-        
+
         lines.append("")
         lines.append("Requirements:")
-        
+
         if meta.requirements:
             for req in meta.requirements:
                 lines.append(f"  {req}")
         else:
             lines.append("  None")
-        
+
         lines.append("")
         lines.append(f"Path: {meta.path or 'Unknown'}")
-        
+
         if plugin_info.error_message:
             lines.append("")
             lines.append(f"Last Error: {plugin_info.error_message}")
-        
+
         return "\n".join(lines)
-    
+
     def _register_commands(self):
         """Register plugin manager commands and permissions."""
         # Register permissions
         self.commands.register_permissions(self.perm_system)
-        
+
         # Register plugin command
         self.register.register_command(
             "plugin",
             "Plugin management commands",
             self.commands.handle_plugin_command,
-            ["plugin"]
+            ["plugin"],
         )
-        
+
         # Register legacy commands for backward compatibility
         self.register.register_command(
             "plugins",
             "List all available plugins (legacy)",
             self._handle_legacy_plugins_command,
-            ["plugin", "plugin.list"]
+            ["plugin", "plugin.list"],
         )
-        
+
         self.register.register_command(
             "plugin_metrics",
             "Show plugin performance metrics (legacy)",
             self._handle_legacy_metrics_command,
-            ["plugin", "plugin.stats"]
+            ["plugin", "plugin.stats"],
         )
-        
+
         self.register.register_command(
             "reload",
             "Reload all plugins (legacy)",
             self._handle_legacy_reload_command,
-            ["plugin", "plugin.reload"]
+            ["plugin", "plugin.reload"],
         )
-        
+
         logger.debug("Plugin manager commands registered")
-    
+
     async def _handle_legacy_plugins_command(self, event):
         """Handle legacy plugins command."""
         return await self.list_plugins("all")
-    
+
     async def _handle_legacy_metrics_command(self, event):
         """Handle legacy plugin_metrics command."""
         return await self.get_overall_stats()
-    
+
     async def _handle_legacy_reload_command(self, event):
         """Handle legacy reload command."""
         success, message = await self.reload_all_plugins()
         return message
-    
-    def _log_loading_metrics(self, total_loaded: int, total_failed: int, total_time: float):
+
+    def _log_loading_metrics(
+        self, total_loaded: int, total_failed: int, total_time: float
+    ):
         """Log loading performance metrics."""
         logger.debug(
             f"Plugin loading completed: "
             f"Loaded: {total_loaded}, Failed: {total_failed}, "
             f"Total time: {total_time:.2f}s"
         )
-        
+
         if total_loaded > 0:
             avg_time = total_time / total_loaded
             logger.info(f"Average load time per plugin: {avg_time:.2f}s")
-    
+
     def cleanup(self):
         """Clean up plugin manager resources."""
         self.loader.cleanup()

@@ -13,13 +13,13 @@ main_config_template = {
 
 class Config:
     """配置管理类"""
-    
+
     main_config = "./config.json"
 
     def __init__(self, main_config):
         """
         初始化配置管理器
-        
+
         Args:
             main_config: 主配置文件路径
         """
@@ -45,11 +45,11 @@ class Config:
     def get(self, key, default=None):
         """
         获取配置值
-        
+
         Args:
             key: 配置键名
             default: 默认值
-            
+
         Returns:
             配置值，如果不存在则返回默认值
         """
@@ -61,7 +61,7 @@ class Config:
     def set(self, key, value):
         """
         设置配置值
-        
+
         Args:
             key: 配置键名
             value: 配置值
@@ -72,7 +72,7 @@ class Config:
     def save(self, config=None):
         """
         保存配置到文件
-        
+
         Args:
             config: 配置文件路径，如果为None则使用主配置文件
         """

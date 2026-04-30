@@ -1,6 +1,11 @@
 from .message import (
-    MessageBase, UserInfo, GroupInfo, MessageSegment, MessageChain,
-    ShareType, Share
+    MessageBase,
+    UserInfo,
+    GroupInfo,
+    MessageSegment,
+    MessageChain,
+    ShareType,
+    Share,
 )
 from .event import Event, MessageEvent, NoticeEvent, CommandEvent, GenericEvent
 from .response import BotResponse, MessageRequest, ActionRequest
@@ -9,7 +14,7 @@ from .types import EventType, ActionType
 
 __all__ = [
     "MessageBase",
-    "UserInfo", 
+    "UserInfo",
     "GroupInfo",
     "MessageSegment",
     "MessageChain",
@@ -26,7 +31,7 @@ __all__ = [
     "Bot",
     "EventType",
     "ActionType",
-    "PROTOCOL_VERSION"
+    "PROTOCOL_VERSION",
 ]
 
 PROTOCOL_VERSION = 3  # 协议版本

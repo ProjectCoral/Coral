@@ -1,9 +1,16 @@
-from collections import defaultdict
+"""
+Register Module
+===============
+
+Register serves as the unified facade for all registries.
+This module provides backward compatibility while delegating to specialized registries.
+"""
+
 import logging
 import datetime
 import random
-import traceback
-from typing import Union, List, Callable
+from typing import Union, List, Callable, Optional
+
 from .protocol import (
     CommandEvent,
     MessageEvent,
@@ -12,244 +19,177 @@ from .protocol import (
     MessageBase,
 )
 from .event_bus import EventBus
-from .perm_system import PermSystem
+from .permission import PermissionType, PermSystem
+from .registry import CommandRegistry, FunctionRegistry, EventRegistry
+from .crash_tracker import CrashTracker
 
 logger = logging.getLogger(__name__)
 
 
 class Register:
-    """注册器类，用于管理命令、事件和函数的注册与执行"""
-    
+    """注册器类，作为各 Registry 的统一对外入口"""
+
     event_bus: EventBus
 
     def __init__(self, event_bus: EventBus):
         """
         初始化注册器
-        
+
         Args:
             event_bus: 事件总线实例
         """
         self.event_bus = event_bus
-        self.commands = {}  # 命令名: (handler, permission)
-        self.command_descriptions = {}
-        self.functions = {}
-        self.load_buildin_plugins: Callable
-        self.crash_times = {}
-        self._event_handlers = defaultdict(
-            dict
-        )  # event_name: handler_func -> wrapper_func
 
-        self.event_bus.subscribe(CommandEvent, self.execute_command)
+        # Initialize crash tracker first
+        self.crash_tracker = CrashTracker(event_bus)
+
+        # Initialize registries
+        self.command_registry = CommandRegistry(event_bus)
+        self.function_registry = FunctionRegistry(event_bus)
+        self.event_registry = EventRegistry(event_bus)
+
+        # Set crash tracker on registries for error reporting
+        self.command_registry.crash_tracker = self.crash_tracker
+        self.function_registry.crash_tracker = self.crash_tracker
+        self.event_registry.crash_tracker = self.crash_tracker
+
+        # Register unregister handlers for crash tracker
+        self.crash_tracker.register_unregister_handler(
+            "command", self.command_registry.unregister_command
+        )
+        self.crash_tracker.register_unregister_handler(
+            "function", self.function_registry.unregister_function
+        )
+        self.crash_tracker.register_unregister_handler(
+            "event", self._event_unregister_wrapper
+        )
+
+        # Backward compatible property proxies
+        self.commands = self.command_registry.commands
+        self.functions = self.function_registry.functions
+        self._event_handlers = self.event_registry._event_handlers
+        self.crash_times = self.crash_tracker.crash_times
+        self.command_descriptions = self.command_registry.command_descriptions
+
+        # Legacy state
+        self.crash_times = self.crash_tracker.crash_times
+
+    def _event_unregister_wrapper(self, event_name: str, listener_name: str = None):
+        """Wrapper for event unregister to match crash tracker callback signature."""
+        self.event_registry.unregister_event(event_name, listener_name)
 
     def hook_perm_system(self, perm_system: PermSystem):
         """
         挂载权限系统
-        
+
         Args:
             perm_system: 权限系统实例
         """
         self.perm_system = perm_system
+        self.command_registry.perm_system = perm_system
         logger.debug("Permission system has been hooked with Register.")
 
-    def register_event(
-        self, event_name: str, listener_name: str, function: Callable, priority: int = 1
-    ):
-        """
-        注册事件处理器
-        
-        Args:
-            event_name: 事件名称
-            listener_name: 监听器名称
-            function: 处理函数
-            priority: 优先级（默认为1）
-        """
-        if (
-            event_name in self._event_handlers
-            and function in self._event_handlers[event_name]
-        ):
-            logger.error(
-                f"[red bold]Event [/]{event_name}[red bold] already registered for [/]{listener_name}"
-            )
-            return
-
-        async def wrapper(event: GenericEvent):
-            if event.name == event_name:
-                try:
-                    await function()
-                except Exception as e:
-                    logger.exception(f"[red]Error in event handler: {e}[/]")
-                    self.crash_record(
-                        "event",
-                        event_name,
-                        str(e),
-                        traceback.format_exc(),
-                        listener_name,
-                    )
-
-        self._event_handlers[event_name][function] = wrapper
-        self.event_bus.subscribe(GenericEvent, wrapper, priority)
+    # === Command Registry delegation ===
 
     def register_command(
         self,
         command_name: str,
         description: str,
         function: Callable,
-        permission: Union[str, List, None] = None,
+        permission: Optional[PermissionType] = None,
     ):
-        if command_name in self.commands:
-            logger.warning(
-                f"[yellow]Command [/]{command_name}[yellow] already registered, overwriting...[/]"
-            )
-        self.commands[command_name] = function, permission
-        self.command_descriptions[command_name] = description
-
-    def register_function(self, function_name: str, function: Callable):
-        if function_name in self.functions:
-            logger.error(
-                f"[red bold]Function [/]{function_name}[red bold] already registered[/]"
-            )
-            return
-        self.functions[function_name] = function
-
-    def unregister_event(self, listener_queue: str, event_name: str):
-        """取消注册事件"""
-        if event_name in self._event_handlers:
-            for function, wrapper in self._event_handlers[event_name].items():
-                self.event_bus.unsubscribe(GenericEvent, wrapper)
-            del self._event_handlers[event_name]
+        """注册命令"""
+        self.command_registry.register_command(
+            command_name, description, function, permission
+        )
 
     def unregister_command(self, command_name: str):
         """取消注册命令"""
-        if command_name in self.commands:
-            del self.commands[command_name]
-        if command_name in self.command_descriptions:
-            del self.command_descriptions[command_name]
+        self.command_registry.unregister_command(command_name)
+
+    def get_command_description(self, command_name: str):
+        """获取命令描述"""
+        return self.command_registry.get_command_description(command_name)
+
+    # === Function Registry delegation ===
+
+    def register_function(self, function_name: str, function: Callable):
+        """注册功能函数"""
+        self.function_registry.register_function(function_name, function)
 
     def unregister_function(self, function_name: str):
         """取消注册功能函数"""
-        if function_name in self.functions:
-            del self.functions[function_name]
+        self.function_registry.unregister_function(function_name)
 
     async def execute_function(self, function_name: str, *args, **kwargs):
-        if function_name in self.functions:
-            try:
-                result = await self.functions[function_name](*args, **kwargs)
-            except Exception as e:
-                logger.exception(
-                    f"[red]Error executing function {function_name}: {e}[/]"
-                )
-                self.crash_record(
-                    "function", function_name, str(e), traceback.format_exc()
-                )
-                return None
-            return result
-        raise ValueError(
-            f"Function {function_name} not found, probably you forget register it"
+        """执行功能函数"""
+        return await self.function_registry.execute_function(
+            function_name, *args, **kwargs
         )
 
-    async def execute_command(self, event: CommandEvent) -> Union[MessageBase, None]:
-        """执行命令"""
-        logger.debug(
-            f"Executing command {event.command} from {event.user.user_id} in {event.group.group_id if event.group else None} with args {event.args}"
+    # === Event Registry delegation ===
+
+    def register_event(
+        self, event_name: str, listener_name: str, function: Callable, priority: int = 1
+    ):
+        """注册事件处理器"""
+        self.event_registry.register_event(
+            event_name, listener_name, function, priority
         )
 
-        if event.command not in self.commands:
-            return event.reply(self.no_command())
-
-        handler, permission = self.commands[event.command]
-
-        # 权限检查
-        if permission and not self.perm_system.check_perm(
-            permission, event.user.user_id, event.group.group_id if event.group else -1
-        ):
-            # return "Permission denied"
-            return event.reply("Permission denied")
-
-        try:
-            result = await handler(event)
-            if isinstance(result, MessageBase):
-                return result
-            else:
-                return event.reply(result)
-
-        except Exception as e:
-            logger.exception(f"[red]Error executing command {event.command}: {e}[/]")
-            self.crash_record("command", event.command, str(e), traceback.format_exc())
-            return event.reply(f"Error executing command {event.command}: {e}")
-
-    def no_command(self):
-        return "No command found"
-
-    def get_command_description(self, command_name: str):
-        return self.command_descriptions.get(command_name, "No description found")
+    def unregister_event(self, listener_name: str, event_name: str):
+        """取消注册事件"""
+        self.event_registry.unregister_event(event_name, listener_name)
 
     async def execute_event(self, event_name: str, platform: str = "coral"):
         """执行事件（通过发布GenericEvent）"""
+        await self.event_registry.execute_event(event_name, platform)
 
-        event = GenericEvent(name=event_name, platform=platform)
+    # === Execute methods ===
 
-        await self.event_bus.publish(event)
+    async def execute_command(self, event: CommandEvent) -> Union[MessageBase, None]:
+        """执行命令"""
+        return await self.command_registry.execute_command(event)
 
-    async def core_reload(self):
+    # === Reload and cleanup ===
 
-        for _, handlers in self._event_handlers.items():
-            for _, wrapper in handlers.items():
-                self.event_bus.unsubscribe(GenericEvent, wrapper)
-        self._event_handlers.clear()
-        self.event_bus._subscribers[MessageEvent].clear()
-        self.event_bus._subscribers[NoticeEvent].clear()
-        self.commands.clear()
-        self.command_descriptions.clear()
-        self.functions.clear()
-        self.crash_times.clear()
-        self.perm_system.save_user_perms()
-        self.perm_system.registered_perms = {}
-        logger.info(
-            "All events, commands, functions and permissions have been unloaded."
-        )
-        self.perm_system.load_user_perms()
-        if self.load_buildin_plugins:
-            self.load_buildin_plugins()
-        logger.info("Coral Core has been reloaded.")
+    # === Crash record (delegates to crash tracker) ===
 
     def crash_record(
         self, type: str, function_name: str, error: str, traceback: str, *listener_queue
     ):
-        if type not in self.crash_times:
-            self.crash_times[type] = {}
-        if function_name not in self.crash_times[type]:
-            self.crash_times[type][function_name] = 0
-        self.crash_times[type][function_name] += 1
-        crash_tips = [
-            "Oops!",
-            "No worries, Coral is still running.",
-            "No, this shouldn't happen.",
-            "Smells like a *bug*.",
-            "I'm sorry, Dave. I'm afraid I can't do that.",
-            "What the heck is going on here?",
-            "Houston, we have a problem.",
-            "You're not supposed to be here.",
-            "Yet another bug has been found.",
-        ]
-        with open(
-            f"./logs/crash_{type}_{function_name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log",
-            "w",
-            encoding="utf-8",
-        ) as f:
-            f.write(random.choice(crash_tips) + "\n")
-            f.write(
-                f"Coral Core has crashed in {type} {function_name} at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-            )
-            f.write("----------------------------------------\n")
-            f.write(f"Error: {error}\nTraceback:\n{traceback}")
-        if self.crash_times[type][function_name] >= 3:
-            logger.error(
-                f"[red] Auto-disabling {type} [/]{function_name}[red] due to frequent crashes.[/]"
-            )
-            match type:
-                case "event":
-                    self.unregister_event(listener_queue[0], function_name)
-                case "command":
-                    self.unregister_command(function_name)
-                case "function":
-                    self.unregister_function(function_name)
+        """
+        记录崩溃信息（转发给 CrashTracker）
+
+        Args:
+            type: 资源类型 ("command", "function", "event")
+            function_name: 资源名称
+            error: 错误信息
+            traceback: 堆栈跟踪
+            listener_queue: 额外参数（事件用，包含 listener_name）
+        """
+        context = None
+        if type == "event" and listener_queue:
+            context = {"listener_name": listener_queue[0]}
+
+        self.crash_tracker.record_crash(type, function_name, error, traceback, context)
+
+    # === Backward compatibility properties ===
+
+    @property
+    def no_command(self):
+        """Backward compatible no_command method reference."""
+        return self.command_registry.no_command
+
+    @no_command.setter
+    def no_command(self, value):
+        """No-op setter for backward compatibility."""
+        pass
+
+    def __getattr__(self, name: str):
+        """Proxy undefined attributes to registries for backward compatibility."""
+        if name in ("command_descriptions",):
+            return getattr(self.command_registry, name, None)
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )

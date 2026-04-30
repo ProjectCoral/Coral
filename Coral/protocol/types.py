@@ -1,13 +1,16 @@
 from enum import Enum
 
+
 class TypeElement:
     """类型元素基类"""
+
     def super_type(self):
         return self.__class__
 
+
 class GroupEventType(TypeElement, Enum):
     """
-    ## 群组事件类型
+    ## 群组事件类型(incoming)
 
     - Group.UPLOAD 群文件上传
     - Group.SET_ADMIN 设置群管理员
@@ -22,6 +25,7 @@ class GroupEventType(TypeElement, Enum):
     - Group.ADD_REQUEST 加群请求
     - Group.INVITE_REQUEST 邀请入群请求
     """
+
     UPLOAD = "group_upload"
     SET_ADMIN = "set_group_admin"
     UNSET_ADMIN = "unset_group_admin"
@@ -35,17 +39,20 @@ class GroupEventType(TypeElement, Enum):
     ADD_REQUEST = "group_add_request"
     INVITE_REQUEST = "group_invite_request"
 
+
 class FriendEventType(TypeElement, Enum):
     """
     ## 好友事件类型
-    
+
     - Friend.FRIEND_ADD 好友添加
     - Friend.RECALL 好友消息撤回
     - Friend.ADD_REQUEST 好友添加请求
     """
+
     FRIEND_ADD = "friend_add"
     RECALL = "friend_recall"
     ADD_REQUEST = "friend_add_request"
+
 
 class BotEventType(TypeElement, Enum):
     """
@@ -54,32 +61,38 @@ class BotEventType(TypeElement, Enum):
     - Bot.LIFECYCLE 生命周期事件
     - Bot.HEARTBEAT 心跳事件
     """
+
     LIFECYCLE = "lifecycle"
     HEARTBEAT = "heartbeat"
-    
+
+
 class EventType:
     """事件类型基类"""
+
     Group = GroupEventType
     Friend = FriendEventType
     Bot = BotEventType
 
+
 class MessageActionType(TypeElement, Enum):
     """
     ## 消息动作类型
-    
+
     - Message.SEND_MSG 发送消息
     - Message.DELETE_MSG 撤回消息
     - Message.GET_MSG 获取消息详情
     - Message.GET_FORWARD_MSG 获取合并转发消息
     """
+
     SEND_MSG = "send_msg"
     DELETE_MSG = "delete_msg"
     GET_MSG = "get_msg"
     GET_FORWARD_MSG = "get_forward_msg"
 
+
 class GroupActionType(TypeElement, Enum):
     """
-    ## 群组动作类型
+    ## 群组动作类型(outgoing)
 
     - Group.KICK 群成员踢出
     - Group.BAN 群成员禁言
@@ -95,6 +108,7 @@ class GroupActionType(TypeElement, Enum):
     - Group.GET_MEMBER_LIST 获取群成员列表
     - Group.GET_MEMBER_INFO 获取群成员信息
     """
+
     KICK = "set_group_kick"
     BAN = "set_group_ban"
     ANONYMOUS_BAN = "set_group_anonymous_ban"
@@ -109,6 +123,7 @@ class GroupActionType(TypeElement, Enum):
     GET_MEMBER_LIST = "get_group_member_list"
     GET_MEMBER_INFO = "get_group_member_info"
 
+
 class FriendActionType(TypeElement, Enum):
     """
     ## 好友动作类型
@@ -117,9 +132,11 @@ class FriendActionType(TypeElement, Enum):
     - Friend.ADD_REQUEST 发送好友请求
     - Friend.GET_LIST 获取好友列表
     """
+
     SEND_LIKE = "send_like"
     ADD_REQUEST = "set_friend_add_request"
     GET_LIST = "get_friend_list"
+
 
 class BotActionType(TypeElement, Enum):
     """
@@ -141,6 +158,7 @@ class BotActionType(TypeElement, Enum):
     - Bot.SET_RESTART 重启协议
     - Bot.CLEAN_CACHE 清理缓存
     """
+
     GET_LOGIN_INFO = "get_login_info"
     GET_STRANGER_INFO = "get_stranger_info"
     GET_FRIEND_LIST = "get_friend_list"
@@ -157,8 +175,10 @@ class BotActionType(TypeElement, Enum):
     SET_RESTART = "set_restart"
     CLEAN_CACHE = "clean_cache"
 
+
 class ActionType:
     """动作类型基类"""
+
     Group = GroupActionType
     Friend = FriendActionType
     Bot = BotActionType

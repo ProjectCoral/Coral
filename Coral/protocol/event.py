@@ -40,7 +40,9 @@ class MessageEvent(Event, MessageBase):
     def to_me(self) -> bool:
         """判断是否被@"""
         return any(
-            seg.type == "at" and isinstance(seg.data, dict) and seg.data["user_id"] == str(self.self_id)
+            seg.type == "at"
+            and isinstance(seg.data, dict)
+            and seg.data["user_id"] == str(self.self_id)
             for seg in self.message.segments
         )
 
@@ -48,24 +50,24 @@ class MessageEvent(Event, MessageBase):
         self,
         message: Union[str, MessageChain],
         at_sender: bool = False,
-        recall_duration: Optional[int] = None
+        recall_duration: Optional[int] = None,
     ) -> "MessageRequest":
         """便捷回复方法
-        
+
         Args:
             message: 回复消息内容，可以是字符串或MessageChain
             at_sender: 是否@发送者
             recall_duration: 自动撤回时间（秒）
-        
+
         Returns:
             MessageRequest: 构建好的消息请求
         """
         if isinstance(message, str):
             message = MessageChain([MessageSegment.text(message)])
-        
+
         # 延迟导入以避免循环导入
         from .response import MessageRequest
-        
+
         return MessageRequest(
             platform=self.platform,
             event_id=self.event_id,
@@ -74,7 +76,7 @@ class MessageEvent(Event, MessageBase):
             user=self.user,
             group=self.group,
             at_sender=at_sender,
-            recall_duration=recall_duration
+            recall_duration=recall_duration,
         )
 
 
@@ -82,9 +84,9 @@ class MessageEvent(Event, MessageBase):
 class NoticeEvent(Event, MessageBase):
     """通知事件 - 系统通知事件"""
 
-    platform: str   # 平台名称
+    platform: str  # 平台名称
     self_id: str  # 机器人自身ID
-    event_id: str   # 事件唯一ID
+    event_id: str  # 事件唯一ID
     type: EventType  # 通知类型
     time: float = field(default_factory=time.time)  # 时间戳
     user: Optional[UserInfo] = None  # 相关用户信息
@@ -113,30 +115,30 @@ class NoticeEvent(Event, MessageBase):
         self,
         message: Union[str, MessageChain],
         at_sender: bool = False,
-        recall_duration: Optional[int] = None
+        recall_duration: Optional[int] = None,
     ) -> "MessageRequest":
         """便捷回复方法
-        
+
         Args:
             message: 回复消息内容，可以是字符串或MessageChain
             at_sender: 是否@发送者
             recall_duration: 自动撤回时间（秒）
-        
+
         Returns:
             MessageRequest: 构建好的消息请求
         """
         if isinstance(message, str):
             message = MessageChain([MessageSegment.text(message)])
-        
+
         # 延迟导入以避免循环导入
         from .response import MessageRequest
-        
+
         # 对于NoticeEvent，user可能为None，需要处理
         reply_user = self.user
         if reply_user is None and self.target is not None:
             # 如果没有user但有target，使用target作为接收者
             reply_user = self.target
-        
+
         return MessageRequest(
             platform=self.platform,
             event_id=self.event_id,
@@ -145,7 +147,7 @@ class NoticeEvent(Event, MessageBase):
             user=reply_user,
             group=self.group,
             at_sender=at_sender,
-            recall_duration=recall_duration
+            recall_duration=recall_duration,
         )
 
 
@@ -174,24 +176,24 @@ class CommandEvent(Event, MessageBase):
         self,
         message: Union[str, MessageChain],
         at_sender: bool = False,
-        recall_duration: Optional[int] = None
+        recall_duration: Optional[int] = None,
     ) -> "MessageRequest":
         """便捷回复方法
-        
+
         Args:
             message: 回复消息内容，可以是字符串或MessageChain
             at_sender: 是否@发送者
             recall_duration: 自动撤回时间（秒）
-        
+
         Returns:
             MessageRequest: 构建好的消息请求
         """
         if isinstance(message, str):
             message = MessageChain([MessageSegment.text(message)])
-        
+
         # 延迟导入以避免循环导入
         from .response import MessageRequest
-        
+
         return MessageRequest(
             platform=self.platform,
             event_id=self.event_id,
@@ -200,7 +202,7 @@ class CommandEvent(Event, MessageBase):
             user=self.user,
             group=self.group,
             at_sender=at_sender,
-            recall_duration=recall_duration
+            recall_duration=recall_duration,
         )
 
 

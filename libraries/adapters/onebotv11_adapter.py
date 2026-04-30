@@ -1,17 +1,18 @@
 import logging
 from typing import Any, Dict, Union
 from Coral.protocol import (
-    MessageEvent, 
-    ActionRequest, 
-    MessageRequest, 
-    MessageChain, 
-    MessageSegment, 
-    UserInfo, 
-    GroupInfo, 
-    NoticeEvent, 
+    MessageEvent,
+    ActionRequest,
+    MessageRequest,
+    MessageChain,
+    MessageSegment,
+    UserInfo,
+    GroupInfo,
+    NoticeEvent,
     BotResponse,
-    ShareType
+    ShareType,
 )
+from Coral.protocol.types import GroupEventType, FriendEventType
 from Coral.adapter import BaseAdapter
 from Coral import config as coral_config
 
@@ -45,8 +46,39 @@ class Onebotv11Adapter(BaseAdapter):
         elif post_type == 'notice':
             return self._handle_action_event(event)
         elif post_type == 'request':
-            # 处理请求事件（如加好友、加群请求）
-            logger.debug(f"Request event received: {event}")
+            sub_type = event.get('sub_type')
+            if sub_type == 'add_group':
+                # 加群请求事件
+                return NoticeEvent(
+                    event_id=f"{event.get('time', 0)}_add_group",
+                    platform=self.PROTOCOL,
+                    self_id=str(event.get('self_id', self.self_id)),
+                    type=GroupEventType.ADD_REQUEST,
+                    user=UserInfo(
+                        platform=self.PROTOCOL,
+                        user_id=str(event.get('user_id', ''))
+                    ),
+                    group=GroupInfo(
+                        platform=self.PROTOCOL,
+                        group_id=str(event.get('group_id', ''))
+                    ),
+                    comment=event.get('comment', ''),
+                    raw=event
+                )
+            elif sub_type == 'add_friend':
+                # 好友请求事件
+                return NoticeEvent(
+                    event_id=f"{event.get('time', 0)}_add_friend",
+                    platform=self.PROTOCOL,
+                    self_id=str(event.get('self_id', self.self_id)),
+                    type=FriendEventType.ADD_REQUEST,
+                    user=UserInfo(
+                        platform=self.PROTOCOL,
+                        user_id=str(event.get('user_id', ''))
+                    ),
+                    comment=event.get('comment', ''),
+                    raw=event
+                )
             return None
         elif post_type == 'meta_event':
             # 处理元事件（如心跳包）
@@ -135,10 +167,31 @@ class Onebotv11Adapter(BaseAdapter):
     def _handle_action_event(self, event: Dict) -> Union[NoticeEvent, None]:
         """处理动作事件（原通知事件）"""
         notice_type = event.get('notice_type')
+        sub_type = event.get('sub_type')
         if not notice_type:
             logger.debug(f"Invalid action event: {event}")
             return None
         logger.debug(f"Action event received: {event}")
+
+        # 映射为协议定义的事件类型
+        if notice_type == 'group_increase':
+            event_type = GroupEventType.MEMBER_INCREASE
+        elif notice_type == 'group_decrease':
+            event_type = GroupEventType.MEMBER_DECREASE
+        elif notice_type == 'group_ban':
+            if sub_type == 'lift_ban':
+                event_type = GroupEventType.LIFT_BAN
+            else:
+                event_type = GroupEventType.BAN
+        elif notice_type == 'group_admin':
+            if sub_type == 'set':
+                event_type = GroupEventType.SET_ADMIN
+            else:
+                event_type = GroupEventType.UNSET_ADMIN
+        else:
+            # 其他类型使用原始值
+            event_type = notice_type
+
         user = UserInfo(
             platform=self.PROTOCOL,
             user_id=str(event.get('user_id', ''))
@@ -149,20 +202,20 @@ class Onebotv11Adapter(BaseAdapter):
             group = GroupInfo(
                 platform=self.PROTOCOL,
                 group_id=str(event['group_id'])
-                )
-        
+            )
+
         operator = None
         if 'operator_id' in event:
             operator = UserInfo(
                 platform=self.PROTOCOL,
                 user_id=str(event['operator_id'])
             )
-        
+
         return NoticeEvent(
             event_id=f"{event['time']}_{notice_type}",
             platform=self.PROTOCOL,
             self_id=str(event.get('self_id', self.self_id)),
-            type=notice_type,  # 直接使用OneBot原生类型
+            type=event_type,
             user=user,
             group=group,
             operator=operator,

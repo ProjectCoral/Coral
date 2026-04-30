@@ -7,7 +7,7 @@ Coral PluginManager 是一个功能强大的插件管理系统，支持依赖感
 ## 版本信息
 
 ```python
-from Coral.plugin_manager import __version__, __meta__
+from Coral.plugin import __version__, __meta__
 
 print(f"PluginManager 版本: {__version__}")
 print(f"PluginManager 元数据版本: {__meta__}")
@@ -45,7 +45,7 @@ print(f"PluginManager 元数据版本: {__meta__}")
 
 ### 基本初始化
 ```python
-from Coral.plugin_manager import PluginManager
+from Coral.plugin import PluginManager
 from Coral import register, config, perm_system
 
 # 初始化插件管理器
@@ -453,7 +453,7 @@ config.set("plugin_manager.max_concurrent_loads", 10)
 ### 2. 依赖图可视化
 ```python
 # 获取插件依赖图（开发调试用）
-from Coral.plugin_manager.metadata import PluginMetadata
+from Coral.plugin.metadata import PluginMetadata
 
 metadata = PluginMetadata()
 plugins_meta = {}  # 从 registry 获取插件元数据
